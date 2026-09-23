@@ -32,18 +32,16 @@ API keys and tokens live only in environment variables or in a .env file at the 
 ## Swimlanes
 You should be unambigously assigned a swimlane directory for your work. If there is any ambiguity in your assignment, ask the user for clarification.
 
-nimoi/bootstrap-harness/gpt-pydantic-harness
-nimoi/bootstrap-harness/gpt-openai-harness
+nimoi/bootstrap-harness/gpt-codex-harness
 nimoi/bootstrap-harness/gpt-anthropic-harness
-nimoi/bootstrap-harness/claude-pydantic-harness
-nimoi/bootstrap-harness/claude-openai-harness
+nimoi/bootstrap-harness/claude-codex-harness
 nimoi/bootstrap-harness/claude-anthropic-harness
 
 The first element in your swimlane name must be your model lineage.
-The second element in your swimlane indicates the primary python module you should use for harness development.
-- anthropic: Claude Agent SDK (claude-agent-sdk), Claude models only.
-- openai: OpenAI Agents SDK (openai-agents), OpenAI models only.
-- pydantic: Pydantic AI (pydantic-ai), both Claude and OpenAI models.
+The second element in your swimlane indicates the primary harness architecture:
+- anthropic: Claude Agent SDK (claude-agent-sdk python library), Claude models only.
+- codex: Codex App Server called from python script
+
 
 You MAY read work from other swimlanes.
 You MUST NOT modify anything in other swimlanes.
@@ -61,3 +59,11 @@ Inside your swimlane folder, use or create the following:
 ## Named tasks
 1. task-1-hello: Create a harness that prompts an agent to say hello world. Print the agent's response and exit. For pydantic, both gpt and claude agents should say hello seperately.
 
+2. task-2-tooling: Create one or more prototype harness drivers to demonstrate the following capabilities with the designated architecture:
+  a. Capture and log messages to and from the agent
+  b. Restrict default tools that allow code execution
+  c. Expose a python-based tool to the agent. For starters, provide an "add" tool where the agent provides two numbers and the tool returns the sum.
+  d. Log tool calls
+  e. Log information about usage and/or account/rate limits
+
+3. task-3-ui: Buld a harness that implements the capabilities from task 3, but it should launch a simple but extensible local web ui for the user to run a single conversation with the agent. New conversation on each launch.
