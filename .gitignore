@@ -1,0 +1,31 @@
+# --- secrets: never tracked, in any swimlane ---
+.env
+.env.*
+*.env
+*.token
+*.key
+*.pem
+credentials*.json
+secrets*.json
+!.env.example
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- harness noise ---
+*.log
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
