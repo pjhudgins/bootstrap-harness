@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="nimoi-token" content="__NIMOI_TOKEN__">
+  <title>NIMOI test pilot</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="title">
+      <strong>NIMOI</strong> <span class="muted">test pilot · ledger harness</span>
+    </div>
+    <div class="badges">
+      <span id="model-badge" class="badge">model …</span>
+      <span id="restriction-badge" class="badge">restrictions …</span>
+      <span id="status" class="badge status">starting</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="chat" aria-label="Conversation">
+      <div id="log" class="log" aria-live="polite"></div>
+      <form id="composer" class="composer">
+        <textarea id="input" rows="2" placeholder="Message the agent. Enter sends, Shift+Enter adds a line."
+                  aria-label="Message" disabled></textarea>
+        <div class="actions">
+          <button id="send" type="submit" disabled>Send</button>
+          <button id="stop" type="button" class="secondary" disabled>Stop</button>
+          <button id="end" type="button" class="danger">End conversation</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="side" aria-label="Session details">
+      <section class="panel">
+        <h2>Session</h2>
+        <dl id="session">
+          <dt>Model</dt><dd id="s-model">…</dd>
+          <dt>Account</dt><dd id="s-account">…</dd>
+          <dt>Thread</dt><dd id="s-thread" class="mono">…</dd>
+        </dl>
+      </section>
+      <section class="panel">
+        <h2>Ledger</h2>
+        <dl>
+          <dt>Ledger</dt><dd id="l-name">…</dd>
+          <dt>Session</dt><dd id="l-session" class="mono small">…</dd>
+          <dt>Harness</dt><dd id="l-harness" class="mono small">…</dd>
+          <dt>Pilot</dt><dd id="l-agent" class="mono small">…</dd>
+          <dt>File</dt><dd id="s-journal" class="mono small">…</dd>
+        </dl>
+      </section>
+      <section class="panel">
+        <h2>Restrictions</h2>
+        <ul id="restrictions" class="checks"></ul>
+      </section>
+      <section class="panel">
+        <h2>Tools</h2>
+        <p class="small muted">Python tools: <span id="t-ours">…</span></p>
+        <p class="small muted">Reviewed, cannot run code:</p>
+        <ul id="t-reviewed" class="small tools"></ul>
+        <p id="t-offered" class="small muted" hidden></p>
+      </section>
+      <section class="panel">
+        <h2>Usage</h2>
+        <dl>
+          <dt>Last turn</dt><dd id="u-last">–</dd>
+          <dt>Total</dt><dd id="u-total">–</dd>
+          <dt>Context</dt><dd id="u-context">–</dd>
+        </dl>
+      </section>
+      <section class="panel">
+        <h2>Rate limits</h2>
+        <div id="limits" class="small muted">–</div>
+      </section>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

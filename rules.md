@@ -66,4 +66,12 @@ Inside your swimlane folder, use or create the following:
   d. Log tool calls
   e. Log information about usage and/or account/rate limits
 
-3. task-3-ui: Buld a harness that implements the capabilities from task 3, but it should launch a simple but extensible local web ui for the user to run a single conversation with the agent. New conversation on each launch.
+3. task-3-ui: Buld a harness that implements the capabilities from task 2, but it should launch a simple but extensible local web ui for the user to run a single conversation with the agent. New conversation on each launch.
+
+4. task-4-ledger:
+  a. Maintain all functions expected in tasks 2 and 3, though implementation may be changed.
+  b. Using the scribe module in bootstrap-ledger, create a fresh ledger file for each chat session. Convert all logging to the ledger with the harness as author and appropriate tags by log type.
+  c. Add agent tools to read and write the ledger, with tag restrictions on writing so that harness entries cannot be overwritten. Come up with an appropriate designation for the agent author.
+  d. Add agent tools for filesystem read, bounded to the nimoi directory, but no write or execute.
+  e. System prompt should instruct the agent (in addition to other instructions of your choice) that it is a "test pilot" for a new harness. It should operate as directed and not initiate tests, but it should verbosely report observations about its harness and tool environment. Also explain that it should not perform any filesystem writes or execute code, but it may write to its ledger.
+  f. System prompt should instruct the agent that it is a NIMOI agent and to read the latest version of NIMOI onboarding.

@@ -1,0 +1,5 @@
+{"seq": 1, "utc": "2026-09-23T20:48:22.779185+00:00", "kind": "configuration", "sdk_version": "0.2.101", "model": "sonnet", "builtin_tools": [], "custom_tools": ["mcp__calc__add"], "strict_mcp_config": true, "setting_sources": [], "max_turns": 4, "timeout_seconds": 180, "session_persistence": false, "inspect_only": true}
+{"seq": 2, "utc": "2026-09-23T20:48:28.210389+00:00", "kind": "account", "subscriptionType": "Claude Max", "apiProvider": "firstParty"}
+{"seq": 3, "utc": "2026-09-23T20:48:28.213773+00:00", "kind": "mcp_status", "scenario": "setup", "servers": []}
+{"seq": 4, "utc": "2026-09-23T20:48:28.763977+00:00", "kind": "run_error", "error_type": "RuntimeError", "error": "Expected only the connected calc MCP server"}
+{"seq": 5, "utc": "2026-09-23T20:48:28.764060+00:00", "kind": "run_complete", "passed": false}

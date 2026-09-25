@@ -20,6 +20,18 @@ Without `strict_mcp_config`, the logged-in account's claude.ai connectors (Gmail
 `task-2-tooling/driver.py` covers requirements a–e in four scenarios (add, read_add, exec, outside). Modules: `runlog.py`, `policy.py`, `calc_tool.py`. Offline tests: `python -m unittest discover -s task-2-tooling/tests -t task-2-tooling` (11 pass).
 Last run: `runs/run-20260923T202108Z.jsonl.log`, all four passed, $0.041.
 
+### task-3-ui — done, pending founder review
+`python task-3-ui/app.py` opens http://127.0.0.1:8765: one conversation per launch, chat plus a live event panel, Stop button, $5 cap per launch (`--budget`). Log: `task-3-ui/runs/conv-<UTC>.jsonl.log`.
+Modules: `app.py` (web), `session.py` (the agent worker; task 2 options), `events.py` (log-first bus to SSE), `static/` (renderer registry in `app.js`). Offline tests: 12 pass.
+Key finding: in multi-turn sessions `total_cost_usd` and `model_usage` are running session totals. Details: `mem/task-3-decisions.md`.
+
+### task-4-ledger — built, offline tests pass (22), awaiting founder review of system prompt before first live run
+Task 3's UI with the wiki ledger as the only record. `scribe` is imported in place from `bootstrap-ledger/python-scribe`, with bytecode writing off. There is one persistent ledger, `task-4-ledger/ledger/claude-anthropic-harness/`, with a new session per launch. It is tracked in git: `ledger/.gitattributes` sets `*.ledger -text` and `ledger/.gitignore` ignores `lease.json`.
+Authors: harness `harness:claude-anthropic-harness/task-4-ledger`; agent `pilot:<model>@claude-anthropic-harness`.
+Agent tools: Read/Glob/Grep across nimoi except `candidate_repos/`; add; ledger read/list/write (writes refused under `log/`, on names labelled `harness`, on others' entries, and for protected labels).
+**End every run with the UI's End session button** (or Ctrl+C). A killed process leaves `lease.json`, which blocks the next launch until a human clears it.
+
 ## Pointers
 - `mem/task-1-decisions.md` — task 1 assumptions and founder answers.
 - `mem/task-2-decisions.md` — task 2 decisions, findings (connector leak, budget overshoot, Read auto-approval), run index.
+- `mem/task-3-decisions.md` — task 3 design, findings (cumulative cost, stale-tab replay, interrupt), verification and gaps.

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NIMOI · Conversation</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="NIMOI conversation"><span class="brand-mark">n.</span><span>NIMOI<small>TEST PILOT · LEDGER</small></span></a>
+      <div class="header-right"><span class="status" id="status" role="status">Connecting</span><button class="quiet" id="end-session">End session</button></div>
+    </header>
+    <main>
+      <section class="conversation" aria-labelledby="conversation-title">
+        <div class="conversation-heading"><div><p class="eyebrow">NIMOI HARNESS · TASK 4</p><h1 id="conversation-title">Conversation</h1></div><span class="pill">One session</span></div>
+        <div class="transcript" id="transcript" role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions text">
+          <div class="empty" id="empty">
+            <span class="empty-mark" aria-hidden="true">↗</span>
+            <h2>Start with a question.</h2>
+            <p>Talk with your agent. Follow a thought.<br>Read NIMOI. Work with your session ledger.</p>
+            <button class="suggestion" id="try-add">Use add to calculate 19.25 + 22.75 <span aria-hidden="true">↗</span></button>
+          </div>
+          <div id="messages"></div>
+          <div class="working" id="working" hidden><span class="pulse"></span>Agent is working…</div>
+        </div>
+        <div class="error" id="error" role="alert" hidden></div>
+        <form class="composer" id="composer">
+          <label class="sr-only" for="prompt">Message your agent</label>
+          <textarea id="prompt" rows="2" maxlength="16000" placeholder="Message your agent…" disabled></textarea>
+          <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><button class="send" id="send" type="submit" disabled>Send <span aria-hidden="true">↑</span></button></div>
+        </form>
+        <p class="footnote">This conversation is recorded in a local ledger. Refreshing keeps the session; relaunching starts a new one.</p>
+      </section>
+      <aside class="sidebar" aria-label="Session details">
+        <section class="side-section session-details">
+          <p class="eyebrow">THIS SESSION</p>
+          <div class="identity"><span class="identity-icon" aria-hidden="true">◈</span><div><strong id="model">Connecting to Codex</strong><span>ChatGPT sign-in</span></div></div>
+          <dl class="session-facts"><div><dt>Tools</dt><dd>Add · Ledger · Read files</dd></div><div><dt>Code execution</dt><dd>Restricted</dd></div></dl>
+          <details><summary>Restriction details</summary><p id="restriction-note">Shell and code tools are disabled; the conversation has no environment access. These are prototype controls.</p></details>
+        </section>
+        <section class="side-section">
+          <p class="eyebrow">CONVERSATION USAGE</p>
+          <div class="token-total"><strong id="total-tokens">—</strong><span>total tokens</span></div>
+          <dl class="usage-facts"><div><dt>Input</dt><dd id="input-tokens">—</dd></div><div><dt>Cached input</dt><dd id="cached-tokens">—</dd></div><div><dt>Output</dt><dd id="output-tokens">—</dd></div></dl>
+          <p class="small-note">Cached tokens are included in input.</p>
+        </section>
+        <section class="side-section"><p class="eyebrow">ACCOUNT LIMITS</p><div id="limits"><p class="muted">Waiting for account information.</p></div><p class="small-note">Shared with other Codex activity.</p></section>
+        <section class="side-section tool-section"><div class="section-title"><p class="eyebrow">TOOL ACTIVITY</p><span class="count" id="tool-count">0</span></div><div id="tools"><p class="muted">Tool calls will appear here.</p></div></section>
+        <a class="journal-link" href="/api/ledger" download>Download session ledger <span aria-hidden="true">↓</span></a>
+        <p class="session-id" id="session-id"></p><p class="small-note">Agent author: gpt-codex-test-pilot<br>Harness records are protected.</p>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

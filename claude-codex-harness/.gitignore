@@ -1,0 +1,4 @@
+# Codex runtime state (arg0 temp dirs, SQLite state, offline CODEX_HOME). Never a record.
+.runtime/
+# Wiki ledger lease: transient, never committed (wiki_ledger_v0.4 §5.1, §12).
+lease.json

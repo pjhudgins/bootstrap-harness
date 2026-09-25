@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NIMOI · Conversation</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><div><span class="wordmark">NIMOI</span><span class="divider">/</span><span>Local conversation</span></div><button id="close" class="quiet">Close session</button></header>
+  <main>
+    <section class="chat-panel" aria-label="Conversation">
+      <div class="chat-heading"><div><p class="eyebrow">GPT / ANTHROPIC HARNESS</p><h1>A place to think together.</h1></div><span id="status" class="status">Connecting</span></div>
+      <div id="transcript" class="transcript" role="log" aria-live="polite" aria-label="Messages">
+        <div id="welcome" class="welcome"><div class="mark">n.</div><h2>A fresh conversation.</h2><p>Talk with Claude, work through an idea, or try the Python addition tool.</p><button id="example" class="example">Try adding 19.25 and 22.75 <span>↗</span></button></div>
+        <div id="messages"></div>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+      <form id="composer"><label for="prompt" class="sr-only">Message Claude</label><textarea id="prompt" rows="3" maxlength="16000" placeholder="Message Claude…" disabled></textarea><div class="composer-footer"><span>Enter to send · Shift+Enter for a new line</span><button id="send" type="submit" disabled>Send <span>↑</span></button></div></form>
+      <p class="footnote">A new conversation on each launch. Messages are logged locally; don’t enter credentials.</p>
+    </section>
+    <aside>
+      <section class="side-card"><p class="eyebrow">SESSION</p><h2 id="model">Claude · sonnet</h2><p id="account" class="muted">Connecting to your existing account</p><div class="capability"><span class="dot"></span><div><strong>Python addition</strong><p>Other tools are disabled.</p></div></div><p class="small" id="session-id"></p></section>
+      <section class="side-card"><p class="eyebrow">ACTIVITY</p><div id="activity" class="activity"><p class="muted">Tool calls will appear here.</p></div></section>
+      <section class="side-card"><p class="eyebrow">USAGE</p><dl><div><dt>Last prompt · input</dt><dd id="input">—</dd></div><div><dt>Last prompt · output</dt><dd id="output">—</dd></div><div><dt>Session · SDK cost</dt><dd id="cost">—</dd></div></dl><p id="cache" class="small"></p><p class="small">SDK accounting, not a measured subscription charge.</p><p id="limits" class="small">Rate information appears when available.</p></section>
+      <details class="side-card"><summary>Local record</summary><p class="small">Messages, tool activity, usage and errors are kept in this session’s journal.</p><code id="journal">Starting…</code></details>
+    </aside>
+  </main>
+</body>
+</html>

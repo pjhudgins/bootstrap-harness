@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NIMOI · Test pilot</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><div><span class="wordmark">NIMOI</span><span class="divider">/</span><span>Test pilot</span></div><button id="close" class="quiet">Close session</button></header>
+  <main>
+    <section class="chat-panel" aria-label="Conversation">
+      <div class="chat-heading"><div><p class="eyebrow">GPT / ANTHROPIC HARNESS · LEDGER</p><h1>Ready for your direction.</h1></div><span id="status" class="status">Connecting</span></div>
+      <div id="transcript" class="transcript" role="log" aria-live="polite" aria-label="Messages">
+        <div id="welcome" class="welcome"><div class="mark">n.</div><h2>A fresh test-pilot session.</h2><p>Direct the work. Claude can read NIMOI files, keep ledger notes, and report what it observes.</p><button id="example" class="example">Begin with onboarding <span>↗</span></button></div>
+        <div id="messages"></div>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+      <form id="composer"><label for="prompt" class="sr-only">Message Claude</label><textarea id="prompt" rows="3" maxlength="16000" placeholder="Message Claude…" disabled></textarea><div class="composer-footer"><span>Enter to send · Shift+Enter for a new line</span><button id="send" type="submit" disabled>Send <span>↑</span></button></div></form>
+      <p class="footnote">A fresh ledger on each launch. Messages are recorded locally; don’t enter credentials.</p>
+    </section>
+    <aside>
+      <section class="side-card"><p class="eyebrow">SESSION</p><h2 id="model">Claude · sonnet</h2><p id="account" class="muted">Connecting to your existing account</p><div class="capability"><span class="dot"></span><div><strong>Read NIMOI · keep ledger notes · add</strong><p>No filesystem writes or code execution.</p></div></div><p class="small" id="session-id"></p></section>
+      <section class="side-card"><p class="eyebrow">ACTIVITY</p><div id="activity" class="activity"><p class="muted">Tool calls will appear here.</p></div></section>
+      <section class="side-card"><p class="eyebrow">USAGE</p><dl><div><dt>Last prompt · input</dt><dd id="input">—</dd></div><div><dt>Last prompt · output</dt><dd id="output">—</dd></div><div><dt>Session · SDK cost</dt><dd id="cost">—</dd></div></dl><p id="cache" class="small"></p><p class="small">SDK accounting, not a measured subscription charge.</p><p id="limits" class="small">Rate information appears when available.</p></section>
+      <details class="side-card"><summary>Session ledger</summary><p class="small">Messages, tools and usage are recorded by the harness. Agent notes use author agent.claude.test-pilot; harness entries are protected.</p><code id="journal">Starting…</code></details>
+    </aside>
+  </main>
+</body>
+</html>

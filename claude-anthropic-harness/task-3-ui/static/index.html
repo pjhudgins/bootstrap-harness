@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NIMOI harness</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>NIMOI harness <span class="sub">claude-anthropic · task 3</span></h1>
+    <div class="meta">
+      <span id="model">model …</span>
+      <span id="account"></span>
+      <span id="ratelimit"></span>
+      <span id="cost">$0.0000 / $…</span>
+      <span id="state" class="badge">connecting</span>
+    </div>
+  </header>
+  <main>
+    <section class="chat">
+      <div id="chat-log" aria-live="polite"></div>
+      <form id="composer">
+        <textarea id="input" rows="3" placeholder="Message the agent. Enter sends, Shift+Enter adds a new line." disabled></textarea>
+        <div class="buttons">
+          <button type="submit" id="send" disabled>Send</button>
+          <button type="button" id="stop" disabled>Stop</button>
+        </div>
+      </form>
+    </section>
+    <aside class="events">
+      <div class="events-head">
+        <h2>Events</h2>
+        <label><input type="checkbox" id="show-raw"> raw stream messages</label>
+      </div>
+      <div id="event-log"></div>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

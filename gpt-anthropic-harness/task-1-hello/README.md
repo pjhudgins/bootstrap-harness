@@ -1,11 +1,23 @@
 # Task 1: hello
 
-From this directory, in PowerShell:
+Verified on this machine with the existing user-installed SDK 0.2.101. From
+this directory in a normal PowerShell terminal:
+
+```powershell
+python -X utf8 hello.py
+```
+
+UTF-8 mode is necessary here because the greeting can contain emoji. Without
+it the first live attempt failed with UnicodeEncodeError; with it the driver
+printed `Hello, World! 👋` and exited 0.
+
+For a separate environment (installation here has not succeeded inside the
+restricted command environment):
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --no-cache-dir --disable-pip-version-check -r requirements.txt
-.\.venv\Scripts\python.exe hello.py
+.\.venv\Scripts\python.exe -X utf8 hello.py
 ```
 
 Uses the SDK's bundled Claude Code CLI and its existing authentication, or an

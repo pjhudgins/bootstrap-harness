@@ -1,0 +1,3 @@
+# Wiki ledger session files are stored byte-exact: no end-of-line conversion, which
+# would add CR bytes and break every trailer hash (wiki_ledger_v0.4 §12).
+*.ledger -text
