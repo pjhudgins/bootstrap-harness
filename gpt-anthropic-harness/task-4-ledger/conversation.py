@@ -45,10 +45,11 @@ class Conversation:
                 raise RuntimeError("The conversation is not ready for another message.")
             self.log.check()
             turn = uuid4().hex
-            self.log.write("user_message_accepted", turn=turn, text=text)
+            text_ref = self.log.user_message(turn, text)
+            self.log.write("user_message_accepted", turn=turn, text=text_ref["link"], text_id=text_ref["id"])
             self.data["messages"].append({"role": "user", "text": self.log.clean(text), "turn": turn})
             self.update(status="thinking")
-            self.loop.call_soon_threadsafe(self.queue.put_nowait, (turn, text))
+            self.loop.call_soon_threadsafe(self.queue.put_nowait, (turn, text, text_ref))
             return turn
 
     def assistant_text(self, turn, text):
@@ -169,10 +170,10 @@ async def serve_conversation(state, task_dir):
             job = await state.queue.get()
             if job is None:
                 break
-            turn, text = job
+            turn, text, text_ref = job
             result = None
             text_seen = False
-            log.write("prompt_send_attempt", turn=turn, text=text)
+            log.write("prompt_send_attempt", turn=turn, text=text_ref["link"], text_id=text_ref["id"])
             async with asyncio.timeout(240):
                 await client.query(text)
                 log.write("prompt_sent", turn=turn)
@@ -186,7 +187,7 @@ async def serve_conversation(state, task_dir):
                     else:
                         direction = ("from_agent" if isinstance(message, AssistantMessage) else
                                      "to_agent" if isinstance(message, UserMessage) else "runtime")
-                        log.write("message", turn=turn, direction=direction, message=message)
+                        log.sdk_message(turn, direction, message)
                     if isinstance(message, AssistantMessage):
                         for block in message.content:
                             if isinstance(block, TextBlock):

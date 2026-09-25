@@ -2,6 +2,7 @@
 
 import hashlib
 import http.client
+import io
 import json
 import os
 from pathlib import Path
@@ -11,7 +12,7 @@ import unittest
 from unittest.mock import patch
 
 from agent_tools import ReadFiles, registry
-from ledger_store import AGENT_AUTHOR, HARNESS_AUTHOR, LedgerJournal, LedgerUnavailable, scribe
+from ledger_store import AGENT_AUTHOR, HARNESS_AUTHOR, HUMAN_AUTHOR, LedgerJournal, LedgerUnavailable, scribe
 from protocol import Client, RpcError, TASK
 from serve import make_server
 from session import Conversation
@@ -37,12 +38,112 @@ class Task4Tests(unittest.TestCase):
         self.assertEqual(view.findings, [])
         entry = view.current("harness/events/00000001")
         self.assertEqual(entry.author, HARNESS_AUTHOR)
-        self.assertEqual(view.labels(entry.name), {"harness", "log-user_message", "message"})
-        self.assertEqual(entry.body["data"]["text"], "hello")
+        self.assertEqual(view.labels(entry.name), {"harness", "log-message", "message"})
+        text = view.current(entry.body["data"]["text"][2:-2])
+        self.assertEqual(text.body, "hello")
+        self.assertEqual(text.author, HUMAN_AUTHOR)
+        self.assertLess(int(text.id.split(":")[1]), int(entry.id.split(":")[1]))
         lines = path.read_bytes().splitlines(keepends=True)
         self.assertEqual(json.loads(lines[-1])["hash"], "sha256:" + hashlib.sha256(b"".join(lines[:-1])).hexdigest())
         self.assertFalse((path.parent / "lease.json").exists())
         self.assertEqual(list(self.root.rglob("*.jsonl")), [])
+
+    def test_user_text_references_preserve_ui_wire_and_distinct_submissions(self):
+        prompt = "A human message\nwith **formatting** and λ."
+        for message_id in ("human-1", "human-2"):
+            self.j.write("user_message", {"id": message_id, "text": prompt})
+            client = Client.__new__(Client)
+            client.journal, client.human_message_id = self.j, message_id
+            class Process:
+                stdin = io.StringIO()
+            client.process = Process()
+            request = {"id": message_id, "method": "turn/start", "params": {
+                "threadId": "thread", "input": [{"type": "text", "text": prompt}]}}
+            client.send(request)
+            self.assertEqual(json.loads(client.process.stdin.getvalue())["params"]["input"][0]["text"], prompt)
+            for method in ("item/started", "item/completed"):
+                self.j.write("receive", {"method": method, "params": {"threadId": "thread", "turnId": message_id,
+                    "item": {"type": "userMessage", "id": message_id, "content": [{"type": "text", "text": prompt}]}}}, human_id=message_id)
+        texts = [self.j.scribe.current(n) for n in self.j.scribe.labelled("message-text")]
+        self.assertEqual(len(texts), 2)
+        self.assertTrue(all(e.author == HUMAN_AUTHOR and e.body == prompt for e in texts))
+        events = [self.j.scribe.current(n).body for n in self.j.scribe.names() if n.startswith("harness/events/")]
+        self.assertEqual(sum(e["kind"] == "message" for e in events), 2)
+        self.assertNotIn(prompt, json.dumps(events, ensure_ascii=False))
+        self.assertEqual([m["text"] for m in self.c.snapshot()["messages"]], [prompt, prompt])
+
+    def test_agent_stream_and_completed_snapshots_have_authored_text_links(self):
+        for fragment in ("Hello ", "world!"):
+            self.j.write("receive", {"method": "item/agentMessage/delta", "params": {
+                "threadId": "thread", "turnId": "turn", "itemId": "agent-item", "delta": fragment}})
+        item = {"type": "agentMessage", "id": "agent-item", "text": "Hello world!", "phase": "final_answer"}
+        completion = {"method": "item/completed", "params": {"threadId": "thread", "turnId": "turn", "item": item}}
+        self.j.write("receive", completion)
+        self.j.write("shutdown_receive", completion)
+        for payload in ({"method": "turn/completed", "params": {"threadId": "thread", "turn": {
+                "id": "turn", "status": "completed", "items": [item]}}},
+                {"id": 7, "result": {"turn": {"id": "turn", "status": "completed", "items": [item]}}}):
+            self.j.write("receive", payload)
+        self.assertEqual(item["text"], "Hello world!")  # caller data never mutated
+        full = [self.j.scribe.current(n) for n in self.j.scribe.labelled("message-text")]
+        self.assertEqual([(e.author, e.body) for e in full], [(AGENT_AUTHOR, "Hello world!")])
+        fragments = [self.j.scribe.current(n) for n in self.j.scribe.labelled("message-fragment")]
+        self.assertEqual([e.body for e in fragments], ["Hello ", "world!"])
+        self.assertTrue(all(e.author == AGENT_AUTHOR for e in fragments))
+        events = [self.j.scribe.current(n).body for n in self.j.scribe.names() if n.startswith("harness/events/")]
+        messages = [e for e in events if e["kind"] == "message"]
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0]["data"]["direction"], "to-user")
+        self.assertEqual(self.c.snapshot()["messages"][0]["text"], "Hello world!")
+        self.assertNotIn("Hello world!", json.dumps(events))
+
+    def test_interrupted_stream_is_preserved_without_a_fake_complete_message(self):
+        self.j.write("receive", {"method": "item/agentMessage/delta", "params": {
+            "turnId": "turn", "itemId": "partial", "delta": "unfinished reply"}})
+        self.j.write("session_failed", {"error": "simulated transport failure"})
+        self.j.close()
+        view = scribe.load(self.j.root, self.c.run_id)
+        self.assertEqual(view.findings, [])
+        self.assertEqual(view.current(view.labelled("message-fragment")[0]).body, "unfinished reply")
+        self.assertEqual(view.labelled("log-message"), [])
+
+    def test_text_survives_failure_before_message_metadata_and_is_not_dispatched(self):
+        real_write = self.j.scribe.write
+        def interrupted(name, body, **kwargs):
+            if name.startswith("harness/events/"):
+                with patch.object(scribe, "_write_all", side_effect=OSError("injected failure after text")):
+                    return real_write(name, body, **kwargs)
+            return real_write(name, body, **kwargs)
+        self.c.update(status="ready")
+        with patch.object(self.j.scribe, "write", side_effect=interrupted):
+            with self.assertRaises(RuntimeError):
+                self.c.submit("Keep this human text even when its envelope fails")
+        texts = self.j.scribe.labelled("message-text")
+        self.assertEqual(self.j.scribe.current(texts[0]).author, HUMAN_AUTHOR)
+        self.assertEqual(self.c.commands.qsize(), 0)
+        self.assertEqual(self.c.snapshot()["status"], "error")
+        self.assertTrue(self.j.failed)
+        self.assertTrue((self.j.directory / "lease.json").exists())
+        self.assertEqual(self.j.scribe.names(), texts)
+
+    def test_authored_transcript_is_redacted_and_cannot_be_changed_by_agent(self):
+        self.j.write("user_message", {"id": "u", "text": "Bearer FAKE_TEST_VALUE_NOT_A_CREDENTIAL"})
+        name = self.j.scribe.labelled("message-text")[0]
+        self.assertEqual(self.j.scribe.current(name).body, "Bearer [REDACTED]")
+        self.assertNotIn(b"FAKE_TEST_VALUE_NOT_A_CREDENTIAL", self.j.bytes())
+        before = self.j.bytes()
+        with self.assertRaises(ValueError):
+            self.j.agent_write(name, "rewrite", self.j.scribe.current(name).id, [])
+        self.assertEqual(before, self.j.bytes())
+
+    def test_tool_payloads_cannot_spoof_message_authorship(self):
+        data = {"method": "item/tool/call", "params": {"arguments": {
+            "type": "userMessage", "id": "fake", "content": [{"type": "text", "text": "not from the human"}]}}}
+        self.j.write("receive", data)
+        self.assertEqual(self.j.scribe.labelled("message-text"), [])
+        entry = self.j.scribe.current("harness/events/00000001")
+        self.assertEqual(entry.author, HARNESS_AUTHOR)
+        self.assertEqual(entry.body["data"], data)
 
     def test_agent_revisions_preserve_history_and_require_prev(self):
         a = self.j.agent_write("agent/note", "first", None, ["agent", "agent-observation"])

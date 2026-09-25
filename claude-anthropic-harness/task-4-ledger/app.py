@@ -7,7 +7,7 @@ and starts a new conversation. Every record the UI shows is a ledger entry
 (ledger_tools.py), and read files under nimoi except candidate_repos/ (policy.py).
 
 Usage:
-    python app.py                        # opens http://127.0.0.1:8765 in the browser
+    python app.py                        # opens http://127.0.0.1:8766 in the browser  (8765 is the ledger reader's default)
     python app.py --port 8800 --no-browser --budget 5 --model claude-sonnet-5
 
 End the session with the UI's "End session" button (or POST /api/shutdown), or
@@ -28,6 +28,7 @@ import argparse
 import asyncio
 import contextlib
 import json
+import socket
 import sys
 import webbrowser
 from pathlib import Path
@@ -38,7 +39,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from starlette.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
@@ -94,7 +95,11 @@ def create_app(session: Session, bus: EventBus, *, port: int, conversation_id: s
         return body, None
 
     async def index(request: Request) -> Response:
-        return FileResponse(STATIC_DIR / "index.html")
+        # Version the asset URLs per launch, so a copy cached before no-cache existed is bypassed too.
+        html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        for asset in ("/static/app.js", "/static/style.css"):
+            html = html.replace(f'"{asset}"', f'"{asset}?v={conversation_id}"')
+        return HTMLResponse(html)
 
     async def state(request: Request) -> Response:
         return JSONResponse(session.snapshot())
@@ -122,6 +127,10 @@ def create_app(session: Session, bus: EventBus, *, port: int, conversation_id: s
         if err:
             return err
         bus.publish("shutdown_requested", via="api")
+        # End open event streams now; otherwise uvicorn waits out timeout_graceful_shutdown
+        # on them and prints a CancelledError traceback (live 2026-09-25). Records written
+        # after this point (the final status) are in the ledger but no longer reach the page.
+        bus.close_streams()
         on_shutdown()
         return JSONResponse({"shutting_down": True}, status_code=202)
 
@@ -133,6 +142,29 @@ def create_app(session: Session, bus: EventBus, *, port: int, conversation_id: s
             after_seq = 0
         return StreamingResponse(sse_stream(bus, after_seq, conversation_id), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache"})
+
+    class NoCache:
+        """Make the browser revalidate the page and its static files on every load.
+
+        Found live 2026-09-25: after a harness update, a cached app.js rendered the new
+        ledger records with the old code (chat showed [[links]] instead of text).
+        """
+
+        def __init__(self, app: Any):
+            self.app = app
+
+        async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+            if scope["type"] != "http" or scope["path"].startswith("/api/"):
+                await self.app(scope, receive, send)
+                return
+
+            async def send_no_cache(message: dict) -> None:
+                if message["type"] == "http.response.start":
+                    headers = [(k, v) for k, v in message.get("headers", []) if k.lower() != b"cache-control"]
+                    message = {**message, "headers": headers + [(b"cache-control", b"no-cache")]}
+                await send(message)
+
+            await self.app(scope, receive, send_no_cache)
 
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette):
@@ -154,7 +186,7 @@ def create_app(session: Session, bus: EventBus, *, port: int, conversation_id: s
             Route("/api/shutdown", shutdown, methods=["POST"]),
             Mount("/static", StaticFiles(directory=STATIC_DIR), name="static"),
         ],
-        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)],
+        middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS), Middleware(NoCache)],
         lifespan=lifespan,
     )
 
@@ -184,6 +216,15 @@ async def sse_stream(bus: EventBus, after_seq: int, conversation_id: str):
         bus.unsubscribe(q)
 
 
+def port_free(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
 def fill_system_prompt(template: str, **values: str) -> str:
     """Replace {placeholders}; unknown braces are left alone (the prompt has none, but be safe)."""
     for key, value in values.items():
@@ -193,12 +234,19 @@ def fill_system_prompt(template: str, **values: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="task-4-ledger: single-conversation web UI over a wiki ledger")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--model", default=MODEL)
     parser.add_argument("--budget", type=float, default=BUDGET_USD, help="USD cap for this launch")
     parser.add_argument("--max-turns", type=int, default=MAX_TURNS, help="agent turns per user message")
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
+
+    # Check the port before opening the ledger: a busy port should not leave a ledger session
+    # (first live launch, 2026-09-25, opened a session and then failed to bind).
+    if not port_free(args.port):
+        print(f"Port {args.port} on 127.0.0.1 is in use; choose another with --port. No ledger session opened.",
+              file=sys.stderr)
+        return 2
 
     scribe = import_scribe()
     from ledger_tools import LedgerGuard  # imported after scribe_import for a clear failure order
@@ -255,6 +303,9 @@ def main() -> int:
             await task
 
         asyncio.run(serve())
+        if not server.started:
+            bus.publish("server_failed", port=args.port,
+                        detail="uvicorn did not start; its error went to stderr, not the ledger")
     finally:
         try:
             ledger.close()

@@ -62,3 +62,27 @@ Task-4 handoff: http://127.0.0.1:57738 (PID 35024), fresh empty conversation and
 ledger `chat-20260924t203008z-07b6223a3a`. [checked: browser Ready and launch output]
 No model prompt sent in that session. Close session closes the ledger/server.
 State: completed — task 4 meets the prototype bar; awaiting founder direction.
+
+2026-09-25 restart: prior task-4 session closed cleanly and validated without
+findings or a lease. Fresh UI Ready at http://127.0.0.1:57738, PID 41832,
+conversation b0ab1763, ledger `chat-20260925t123458z-71b7535b40`.
+No model prompt sent during restart; prior session had reported revoked OAuth.
+
+Second requested restart, 2026-09-25 09:01 local: prior ledger closed and validated
+without findings/lease. Current UI http://127.0.0.1:57738, PID 35720,
+conversation d2b03ab6, ledger `chat-20260925t130116z-ce16642659`.
+[checked: browser] User's test is receiving a response and invoking read tools.
+
+Format review 2026-09-25: all four session files pass wire-format checks; three
+closed hashes match, active head has only expected unclosed finding. See
+`mem/task-4-format-review.md` for evidence and the per-chat versus per-project
+ledger design difference. Read-only review script: `task-4-ledger/audit_format.py`.
+
+Message text update 2026-09-25: text bodies now carry human/agent authors;
+harness metadata references them with wikilinks and exact IDs. 16 offline tests
+pass. See `mem/task-4-message-text.md` for format, decisions and reader limitation.
+Updated UI Ready at http://127.0.0.1:57738, PID 16300, conversation 83151704,
+ledger `chat-20260925t134206z-9afbffcf4d`. State: completed; no new model test sent.
+
+`mem/task-4-spec.md` is the task-4 reproduction back-specification: root
+requirements/decisions with subordinate choices and limits, including text authorship.

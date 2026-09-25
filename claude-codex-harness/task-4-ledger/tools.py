@@ -5,8 +5,9 @@
 - add: sum of two numbers (task 2).
 - ledger_list, ledger_read: read the harness's ledger, including earlier chats.
 - ledger_write, ledger_tag: the agent's only way to write. Entries are attested to the
-  agent's author; nothing named `harness/`, nothing tagged `harness`, and no protected
-  label (`harness`, `log.*`) can be written, tagged or untagged by the agent.
+  agent's author. Nothing named `harness/` or `transcript/`, nothing tagged `harness` or
+  `transcript`, and no protected label (`harness`, `log.*`, `transcript`,
+  `transcript.*`) can be written, tagged or untagged by the agent.
 - fs_list, fs_read: read-only, bounded to the nimoi folder. Secret files and `.git` are
   refused and key-like strings are redacted, because every result is sent to the model
   and recorded in the ledger (rules.md, Secrets).
@@ -88,8 +89,8 @@ LEDGER_SPECS = [
     _spec("ledger_write",
           "Write a text entry to your ledger. To create a new name, omit prev. To update an "
           "existing name, pass prev = the id its current entry has (read it first). You may "
-          "not write names under harness/ or names tagged harness. Your entries are "
-          "attributed to you automatically and tagged 'pilot'.",
+          "not write names under harness/ or transcript/, or names tagged harness or "
+          "transcript. Your entries are attributed to you automatically and tagged 'pilot'.",
           {"name": {"type": "string", "description": "segments of letters, digits, . _ - "
                                                      "separated by /, e.g. pilot/observations"},
            "body": {"type": "string"},
@@ -98,8 +99,8 @@ LEDGER_SPECS = [
                       "description": "extra labels to tag it with"}},
           ["name", "body"]),
     _spec("ledger_tag",
-          "Add (or with remove=true, remove) a label on a ledger name. Harness entries and "
-          "the labels harness and log.* are protected.",
+          "Add (or with remove=true, remove) a label on a ledger name. Harness and transcript "
+          "entries, and the labels harness, log.*, transcript and transcript.*, are protected.",
           {"name": {"type": "string"}, "label": {"type": "string"},
            "remove": {"type": "boolean"}}, ["name", "label"]),
 ]
@@ -120,7 +121,15 @@ LABEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
 
 def is_protected_label(label):
-    return label == ledger_log.HARNESS_LABEL or label.startswith(ledger_log.LOG_LABEL_PREFIX)
+    return (label in (ledger_log.HARNESS_LABEL, ledger_log.TRANSCRIPT_LABEL)
+            or label.startswith(ledger_log.LOG_LABEL_PREFIX)
+            or label.startswith(ledger_log.TRANSCRIPT_LABEL + "."))
+
+
+def is_protected_prefix(name):
+    """Names only the harness writes: its records, and the transcript of messages."""
+    return any(name == p.rstrip("/") or name.startswith(p)
+               for p in ("harness/", ledger_log.TRANSCRIPT_PREFIX))
 
 
 # ---- filesystem tools ---------------------------------------------------------------
@@ -145,20 +154,7 @@ SECRET_PATTERNS = [".env", ".env.*", "*.env", "*.token", "*.key", "*.pem", "*.p1
                    "credentials*.json", "secrets*.json", "auth.json", "id_rsa*", "id_ed25519*",
                    ".netrc", ".npmrc", ".pypirc"]
 SECRET_ALLOWED = [".env.example"]
-KEY_LIKE = re.compile("|".join([
-    r"sk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}",
-    r"gh[pousr]_[A-Za-z0-9]{30,}",
-    r"github_pat_[A-Za-z0-9_]{30,}",
-    r"xox[abprs]-[A-Za-z0-9-]{10,}",
-    r"AKIA[0-9A-Z]{16}",
-    r"AIza[0-9A-Za-z_-]{35}",
-    r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}",
-    r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----",
-]))
-
-
-def redact_keys(text):
-    return KEY_LIKE.subn("<redacted: key-like string>", text)
+redact_keys = ledger_log.redact_keys  # one definition, shared with the ledger's scrub
 
 
 class Toolbox:
@@ -206,7 +202,7 @@ class Toolbox:
 
     # -- ledger ------------------------------------------------------------------------
     def _protected_name(self, name):
-        return (name == "harness" or name.startswith("harness/")
+        return (is_protected_prefix(name)
                 or any(is_protected_label(label) for label in self.ledger.labels(name)))
 
     def _refused(self, error):
@@ -255,8 +251,9 @@ class Toolbox:
         if len(body) > MAX_BODY_CHARS:
             raise ToolInputError(f"body is over {MAX_BODY_CHARS} characters")
         if self._protected_name(name):
-            raise ToolInputError("refused: harness entries (names under harness/ or tagged "
-                                 "harness) cannot be written by the agent")
+            raise ToolInputError("refused: harness entries (names under harness/ or "
+                                 "transcript/, or tagged harness or transcript) cannot be "
+                                 "written by the agent")
         if not isinstance(labels, list) or not all(isinstance(x, str) for x in labels):
             raise ToolInputError("labels must be a list of strings")
         bad = [x for x in labels if is_protected_label(x)]

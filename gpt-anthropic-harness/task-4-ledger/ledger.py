@@ -24,6 +24,7 @@ finally:
 
 HARNESS_AUTHOR = "harness"
 AGENT_AUTHOR = "agent.claude.test-pilot"
+HUMAN_AUTHOR = "human.session-user"
 AGENT_TAGS = frozenset({"pilot.note", "pilot.observation", "pilot.question"})
 AGENT_NAME = re.compile(r"pilot/[A-Za-z0-9_-][A-Za-z0-9._/-]{0,180}")
 
@@ -38,6 +39,8 @@ class LedgerLog(Redactor):
         self.lock = threading.RLock()
         self.failed = False
         self.seq = 0
+        self.text_seq = 0
+        self.turn_text = {}
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.name = "chat-" + datetime.now(timezone.utc).strftime("%Y%m%dt%H%M%Sz") + "-" + uuid4().hex[:10]
@@ -64,6 +67,73 @@ class LedgerLog(Redactor):
                 raise LedgerFailed("Ledger event write failed; partial records and lease are preserved.") from exc
             self.seq += 1
             return entry_id
+
+    def _message_text(self, text, role):
+        """Caller holds lock; identity is selected by the harness, never a tool arg."""
+        self.check()
+        author = {"user": HUMAN_AUTHOR, "assistant": AGENT_AUTHOR,
+                  "runtime": HARNESS_AUTHOR}[role]
+        name = f"messages/{role}/{self.text_seq + 1:08d}"
+        try:
+            entry_id = self.scribe.write(name, self.clean(text), author=author)
+            self.scribe.tag(name, "message.text", author=HARNESS_AUTHOR)
+            self.scribe.tag(name, "message." + role, author=HARNESS_AUTHOR)
+        except Exception as exc:
+            self.failed = True
+            raise LedgerFailed("Message text write failed; preserve ledger/lease.") from exc
+        self.text_seq += 1
+        return {"name": name, "id": entry_id, "author": author, "link": f"[[{name}]]"}
+
+    def user_message(self, turn, text):
+        with self.lock:
+            ref = self._message_text(text, "user")
+            self.turn_text[turn] = {("user", self.clean(text)): ref}
+            self.write("message", turn=turn, direction="from_user",
+                       message={"_type": "HumanMessage", "text": ref["link"]}, text_entries=[ref])
+            return ref
+
+    def sdk_message(self, turn, direction, message):
+        """Extract display text; retain SDK/tool/usage structure as harness evidence."""
+        with self.lock:
+            self.check()
+            record = self.clean(message)
+            refs = []
+            known = self.turn_text.setdefault(turn, {})
+            kind = record.get("_type") if isinstance(record, dict) else None
+            if kind == "AssistantMessage":
+                # SDK authentication/error text is runtime-authored, not model prose.
+                role = "runtime" if record.get("error") else "assistant"
+                for block in record.get("content", []):
+                    if block.get("_type") == "TextBlock":
+                        text = block["text"]
+                        ref = self._message_text(text, role)
+                        known[(role, text)] = ref
+                        block["text"] = ref["link"]
+                        refs.append(ref)
+            elif kind == "UserMessage":
+                # SDK UserMessage also carries tool results; do not label those human.
+                content = record.get("content")
+                if isinstance(content, str) and ("user", content) in known:
+                    ref = known[("user", content)]
+                    record["content"] = ref["link"]
+                    refs.append(ref)
+                elif isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("_type") == "TextBlock":
+                            ref = known.get(("user", block.get("text")))
+                            if ref:
+                                block["text"] = ref["link"]
+                                refs.append(ref)
+            elif kind == "ResultMessage" and isinstance(record.get("result"), str):
+                # Reuse the emitted text when the SDK repeats it in its final result.
+                text = record["result"]
+                ref = known.get(("assistant", text)) or known.get(("runtime", text))
+                if ref:
+                    record["result"] = ref["link"]
+                    refs.append(ref)
+            self.write("message", turn=turn, direction=direction, message=record, text_entries=refs)
+            if kind == "ResultMessage":
+                self.turn_text.pop(turn, None)
 
     def agent_write(self, name, body, tags, prev=None):
         with self.lock:

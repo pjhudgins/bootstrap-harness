@@ -15,7 +15,7 @@ from unittest.mock import Mock, patch
 from app import make_server
 from conversation import Conversation
 from filesystem import ReadOnlyFiles
-from ledger import AGENT_AUTHOR, LedgerFailed, LedgerLog, scribe
+from ledger import AGENT_AUTHOR, HUMAN_AUTHOR, LedgerFailed, LedgerLog, scribe
 from redaction import Redactor
 from tools import FULL_NAMES, ToolService, allowed
 
@@ -68,6 +68,71 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual([e.body for e in self.log.scribe.history("pilot/note")], ["first", "second"])
         self.assertEqual(self.log.read(name="pilot/note")["id"], second["id"])
         self.assertEqual(self.log.read(tag="pilot.observation")["entries"][0]["name"], "pilot/note")
+
+    def test_message_text_authorship_links_and_metadata_survive_reload(self):
+        prompt = "Hello 👋\n\nKeep my spacing."
+        user_ref = self.log.user_message("turn-a", prompt)
+        self.log.sdk_message("turn-a", "from_agent", {"_type": "AssistantMessage",
+            "model": "test-model", "content": [{"_type": "TextBlock", "text": "First\nparagraph."},
+                {"_type": "ToolUseBlock", "name": "add", "input": {"a": 1, "b": 2}},
+                {"_type": "TextBlock", "text": "Last paragraph."}], "error": None})
+        self.log.sdk_message("turn-a", "runtime", {"_type": "ResultMessage",
+            "result": "Last paragraph.", "usage": {"input_tokens": 8}})
+        self.log.close()
+        view = scribe.load(self.log.root, self.log.name)
+        self.assertEqual(view.findings, [])
+        texts = [view.current(n) for n in view.labelled("message.text")]
+        self.assertEqual(len(texts), 3)  # SDK result reuses its original text entry.
+        self.assertEqual(view.current(user_ref["name"]).body, prompt)
+        self.assertEqual(view.current(user_ref["name"]).author, HUMAN_AUTHOR)
+        for name in view.labelled("message.assistant"):
+            self.assertEqual(view.current(name).author, AGENT_AUTHOR)
+        events = [view.current(n) for n in view.labelled("log.message")]
+        for event in events:
+            self.assertEqual(event.author, "harness")
+            for ref in event.body["text_entries"]:
+                entry = view.current(ref["name"])
+                self.assertEqual(entry.id, ref["id"])
+                self.assertEqual(ref["link"], "[[" + entry.name + "]]")
+                self.assertLess(int(entry.id.split(":")[1]), int(event.id.split(":")[1]))
+        content = events[1].body["message"]["content"]
+        self.assertEqual(content[1]["input"], {"a": 1, "b": 2})
+        self.assertEqual(events[2].body["message"]["result"], content[2]["text"])
+        self.assertEqual(events[2].body["message"]["usage"], {"input_tokens": 8})
+
+    def test_message_identity_redaction_and_tool_result_boundaries(self):
+        with patch.dict(os.environ, {"TEST_API_KEY": "synthetic-secret-value"}):
+            self.log.secrets = Redactor().secrets
+        ref = self.log.user_message("turn-b", "human synthetic-secret-value")
+        self.assertEqual(self.log.scribe.current(ref["name"]).body, "human [REDACTED]")
+        self.log.sdk_message("turn-b", "to_agent", {"_type": "UserMessage", "content": [
+            {"_type": "ToolResultBlock", "content": "tool output", "tool_use_id": "tool-1"}]})
+        self.log.sdk_message("turn-b", "from_agent", {"_type": "AssistantMessage",
+            "error": "authentication_failed", "content": [{"_type": "TextBlock", "text": "Runtime error"}]})
+        self.assertEqual(len(self.log.scribe.labelled("message.user")), 1)
+        self.assertEqual(self.log.scribe.labelled("message.assistant"), [])
+        runtime_name = self.log.scribe.labelled("message.runtime")[0]
+        self.assertEqual(self.log.scribe.current(runtime_name).author, "harness")
+        for name in (ref["name"], runtime_name):
+            with self.assertRaises(ValueError):
+                self.log.agent_write(name, "rewrite", ["pilot.note"])
+
+    def test_message_metadata_failure_preserves_text_and_stops(self):
+        bad = object.__new__(LedgerLog)
+        Redactor.__init__(bad)
+        bad.lock, bad.failed, bad.seq = threading.RLock(), False, 0
+        bad.text_seq, bad.turn_text = 0, {}
+        bad.scribe = Mock(is_open=True)
+        bad.scribe.write.side_effect = ["20260925T000000Z:2", OSError("synthetic metadata failure")]
+        with self.assertRaises(LedgerFailed):
+            bad.user_message("turn-c", "surviving text")
+        self.assertTrue(bad.failed)
+        self.assertEqual(bad.scribe.write.call_args_list[0].args[1], "surviving text")
+        with self.assertRaises(LedgerFailed):
+            bad.user_message("retry", "must not be written")
+        bad.close()
+        self.assertEqual(bad.scribe.write.call_count, 2)
+        bad.scribe.close.assert_not_called()
 
     def test_harness_prefix_author_and_tags_each_protect_entries(self):
         harness_id = self.log.write("test", original=True)
@@ -212,6 +277,11 @@ class IntegrationTests(unittest.TestCase):
             snapshot = json.loads(request("GET", "/api/state")[1])
             self.assertEqual(snapshot["messages"][0]["text"], "Read onboarding")
             self.assertEqual(len(self.log.scribe.labelled("log.user_message_accepted")), 1)
+            accepted = self.log.scribe.current(self.log.scribe.labelled("log.user_message_accepted")[0])
+            text_name = self.log.scribe.labelled("message.user")[0]
+            self.assertEqual(accepted.body["text"], "[[" + text_name + "]]")
+            self.assertEqual(self.log.scribe.current(text_name).author, HUMAN_AUTHOR)
+            self.assertEqual(state.queue.get_nowait()[1], "Read onboarding")
         finally:
             server.shutdown()
             thread.join()

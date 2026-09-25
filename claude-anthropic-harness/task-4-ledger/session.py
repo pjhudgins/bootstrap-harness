@@ -34,6 +34,7 @@ from claude_agent_sdk import (
 import calc_tool
 import ledger_tools
 from events import EventBus
+from ledgerlog import HUMAN_AUTHOR, to_jsonable, wikilink
 from policy import ALLOWED_BUILTINS, EXCLUDED_DIRS, ToolPolicy
 
 ACCOUNT_KEYS_LOGGED = ("subscriptionType", "apiProvider")  # founder decision: no email/organization
@@ -67,6 +68,7 @@ class AgentSession:
         # per-turn (verified live 2026-09-23, task 3). Only ResultMessage.usage is per-turn.
         self.session_cost_usd = 0.0
 
+        self._turn_links: dict[str, str] = {}
         self._inbox: asyncio.Queue[str | None] = asyncio.Queue()
         self._client: ClaudeSDKClient | None = None
         self._task: asyncio.Task | None = None
@@ -153,11 +155,13 @@ class AgentSession:
 
     async def _turn(self, client: ClaudeSDKClient, text: str) -> None:
         self.bus.log.context = {"turn": self.turn}
-        self.bus.publish("message", direction="to_agent", message={"_type": "prompt", "text": text})
+        self._turn_links: dict[str, str] = {}  # text -> wikilink, for ResultMessage.result
+        user_text = self._log_text(text, author=HUMAN_AUTHOR, direction="to_agent")
+        self.bus.publish("message", direction="to_agent", message={"_type": "prompt", "text": user_text})
         try:
             await client.query(text)
             async for message in client.receive_response():
-                self.bus.publish("message", direction=direction(message), message=message)
+                self.bus.publish("message", direction=direction(message), message=self._message_body(message))
                 if isinstance(message, SystemMessage) and message.subtype == "init":
                     self.bus.publish("session_tools", tools=message.data.get("tools"),
                                      mcp_servers=message.data.get("mcp_servers"))
@@ -172,6 +176,37 @@ class AgentSession:
             over = self.session_cost_usd >= self.budget_usd
             self._set_state("over_budget" if over else "idle")
 
+    # ---- message text (founder direction, 2026-09-25) --------------------------------------
+
+    def _log_text(self, text: str, *, author: str, direction: str) -> str:
+        """Write text as its own ledger entry first; return the wikilink that replaces it.
+
+        If the ledger write failed, the text itself is returned, so it stays inline in the
+        message record rather than being lost.
+        """
+        record = self.bus.publish_text(text, author=author, direction=direction)
+        link = wikilink(record) if record else None
+        if link:
+            self._turn_links[text] = link
+        return link or text
+
+    def _message_body(self, message: Any) -> Any:
+        """The stream message as JSON, with user-facing text replaced by wikilinks.
+
+        Assistant TextBlocks become text entries authored by the agent. ResultMessage.result
+        repeats the final reply, so it is linked too when it matches text already logged.
+        Thinking, tool inputs and tool results are not message text and stay inline.
+        """
+        body = to_jsonable(message)
+        if isinstance(message, AssistantMessage):
+            for block in body.get("content") or []:
+                if block.get("_type") == "TextBlock" and block.get("text"):
+                    block["text"] = self._log_text(block["text"], author=self.guard.agent_author,
+                                                   direction="from_agent")
+        elif isinstance(message, ResultMessage) and message.result in self._turn_links:
+            body["result"] = self._turn_links[message.result]
+        return body
+
     def _record_usage(self, m: ResultMessage) -> None:
         turn_cost = None
         if m.total_cost_usd is not None:
@@ -185,6 +220,10 @@ class AgentSession:
             budget_usd=self.budget_usd, usage=m.usage, model_usage=m.model_usage,
             num_turns=m.num_turns, duration_ms=m.duration_ms, duration_api_ms=m.duration_api_ms,
             is_error=m.is_error, subtype=m.subtype, permission_denials=m.permission_denials,
+            # subtype can say "success" on an API failure (live 2026-09-25: 401 with subtype
+            # success, is_error true), so keep the fields that say what actually happened.
+            api_error_status=m.api_error_status, stop_reason=m.stop_reason, errors=m.errors,
+            result=self._turn_links.get(m.result, m.result) if m.is_error else None,
         )
 
     async def _record_session_facts(self, client: ClaudeSDKClient) -> None:
@@ -255,7 +294,12 @@ class AgentSession:
                 "PostToolUse": [HookMatcher(matcher=None, hooks=[post_tool_use])],
                 "PostToolUseFailure": [HookMatcher(matcher=None, hooks=[post_tool_use_failure])],
             },
-            setting_sources=[],  # no CLAUDE.md, memory, hooks or plugins from nimoi or the user
+            setting_sources=[],  # no CLAUDE.md, hooks or plugins from nimoi or the user
+            # Auto memory loads regardless of setting_sources: with cwd = nimoi it injected
+            # ~/.claude/projects/C--Users-pjhud-local-26-nimoi/memory/MEMORY.md (live 2026-09-25).
+            # Documented off switch: ref/claude-code-docs/agent-sdk__claude-code-features.md.
+            # Python merges env on top of the inherited environment.
+            env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"},
             max_turns=self.max_turns,  # per user message
             max_budget_usd=self.budget_usd,  # SDK tripwire; the harness gate in send() is the real stop
             extra_args={"no-session-persistence": None},

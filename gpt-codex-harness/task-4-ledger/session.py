@@ -11,7 +11,7 @@ import threading
 import uuid
 
 from protocol import Client, RESTRICTIONS, RpcError, SessionStopped, TASK, redact
-from ledger_store import AGENT_AUTHOR, HARNESS_AUTHOR, LedgerJournal, SCRIBE_PATH, scribe
+from ledger_store import AGENT_AUTHOR, HARNESS_AUTHOR, HUMAN_AUTHOR, LedgerJournal, SCRIBE_PATH, scribe
 from agent_tools import registry
 
 
@@ -29,7 +29,8 @@ class Conversation:
         self.log_path = self.journal.path
         self.tools = registry(self.journal)
         self.state["ledger"] = {"name": self.run_id, "path": str(self.log_path),
-                                "agent_author": AGENT_AUTHOR, "harness_author": HARNESS_AUTHOR}
+                                "agent_author": AGENT_AUTHOR, "harness_author": HARNESS_AUTHOR,
+                                "human_author": HUMAN_AUTHOR}
         self.state["tool_names"] = list(self.tools)
         self.worker = threading.Thread(target=self.run, name="codex-conversation", daemon=True)
 
@@ -56,13 +57,14 @@ class Conversation:
         # Log before dispatch; this also updates the UI projection. Redact recognizable
         # credential forms before they can become a retained conversation message.
         prompt = redact(prompt.strip())
+        message_id = uuid.uuid4().hex
         try:
-            self.journal.write("user_message", {"id": uuid.uuid4().hex, "text": prompt})
+            self.journal.write("user_message", {"id": message_id, "text": prompt})
         except Exception as error:
             self.update(status="error", error=redact(str(error)))
             self.stop_event.set()
             raise RuntimeError("Message was not dispatched: ledger recording failed.") from error
-        self.commands.put(prompt)
+        self.commands.put((message_id, prompt))
 
     def observe(self, kind, data):
         with self.lock:
@@ -175,17 +177,18 @@ class Conversation:
             self.journal.write("session_start", {"run_id": self.run_id, "command": command,
                 "scribe": scribe.SCRIBE_ID, "ledger_version": scribe.LEDGER_VERSION,
                 "scribe_sha256": hashlib.sha256(SCRIBE_PATH.read_bytes()).hexdigest(),
-                "agent_author": AGENT_AUTHOR, "harness_author": HARNESS_AUTHOR})
+                "agent_author": AGENT_AUTHOR, "harness_author": HARNESS_AUTHOR,
+                "human_author": HUMAN_AUTHOR, "message_storage": "authored-text-links-v1"})
             client = Client(self.journal, command, env, self.stop_event, self.tools)
             self.initialize(client)
             self.update(status="ready")
             while not self.stop_event.is_set():
                 try:
-                    prompt = self.commands.get_nowait()
+                    message_id, prompt = self.commands.get_nowait()
                 except queue.Empty:
                     client.receive(idle=True)
                     continue
-                turn_id, replies = client.run_turn(prompt)
+                turn_id, replies = client.run_turn(prompt, message_id)
                 self.journal.write("ui_turn_complete", {"turn_id": turn_id})
                 self.read_limits(client)
                 self.update(status="ready")

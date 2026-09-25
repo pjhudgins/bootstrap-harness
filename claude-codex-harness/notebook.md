@@ -61,7 +61,9 @@ and writes only its own ledger entries; a corrupted ledger is worse than a failu
 `harness:claude-codex-harness/task-4-ledger`, pilot
 `test-pilot:<model>@claude-codex-harness`. 12 tests. Live 2026-09-24: the pilot read
 onboarding v1.12, reported its environment, wrote its observations, and its
-directed attempt to overwrite a harness entry was refused. Open for the founder:
+directed attempt to overwrite a harness entry was refused. 2026-09-25 (founder):
+message texts are now `transcript/` entries by their writers (`human:session-user` or
+the pilot), linked from harness `message` records; 13 tests. Open for the founder:
 streamed deltas are about 84% of the ledger; the `harness` label collides with
 topic use; whether ledger sessions are committed as they are.
 `mem/task-4-record.md`.
@@ -69,6 +71,10 @@ topic use; whether ledger sessions are committed as they are.
 ## Pointers
 - `mem/task-1-record.md` … `mem/task-4-record.md`: each task's bar, assumptions,
   founder answers, decisions, verification, findings and DISCREPANCY lines.
+- `mem/task-4-spec.md`: a back-specification of task 4 (tiered requirements and design
+  decisions, with sources), for reproducing it elsewhere.
+- **Ledger lease held since 2026-09-25 13:27Z** (process killed, not ended). A human
+  clears it; see `mem/task-4-record.md`.
 - Cross-lane: `../gpt-codex-harness/` did tasks 1 and 2 on the same architecture.
   Its `mem/task-2-record.md` has the `code_mode_host` finding; its task-2
   restriction claim probably has the same `exec` gap (`mem/task-2-record.md` here).

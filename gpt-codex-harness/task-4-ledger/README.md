@@ -55,6 +55,9 @@ databases. No git commands are performed; the human owns git.
 | Record | Attested author | Names | Tags |
 | --- | --- | --- | --- |
 | Harness events | `gpt-codex-harness` | `harness/events/<sequence>` | `harness`, `log-<kind>`, plus applicable category tags |
+| Human message text | `human-user-of-session` | `messages/human/<sequence>` | `transcript`, `protected`, `message-text`, `from-human` |
+| Agent message text | `gpt-codex-test-pilot` | `messages/agent/<sequence>` | `transcript`, `protected`, `message-text`, `from-agent` |
+| Streamed reply fragments | `gpt-codex-test-pilot` | `messages/fragments/<sequence>` | `transcript`, `protected`, `message-fragment`, `from-agent` |
 | Agent notes | `gpt-codex-test-pilot` | `agent/<name>` | `agent`, plus chosen `agent-*` tags |
 
 Category tags include `message`, `tool`, `usage`, `account-limits`, `protocol`,
@@ -62,9 +65,33 @@ Category tags include `message`, `tool`, `usage`, `account-limits`, `protocol`,
 kind/data and a monotonically increasing harness-event sequence. These category
 tags supplement `log-send`, `log-receive`, `log-python_tool`, and other exact kinds.
 
-Messages, protocol traffic, Python arguments/results, usage snapshots, failures,
-and exit status are harness-authored evidence, including messages produced by
-the agent. A deliberate `ledger_write` note is agent-authored. Tools cannot
+Message text is a plain string body attributed to its speaker. The harness
+writes that text first, then a `kind: message` event linking to it, for example:
+
+```json
+{"author":"human-user-of-session","name":"messages/human/00000001","body":"Hello"}
+{"author":"gpt-codex-harness","name":"harness/events/00000001","body":{"sequence":1,"kind":"message","data":{"source":"user_message","message_id":"ui-message-id","text":"[[messages/human/00000001]]","text_id":"20260925T140000Z:6","author":"human-user-of-session","direction":"from-user","complete":true}}}
+```
+
+This abbreviated example omits timestamps and preceding tag lines. The exact
+text entry id is recorded alongside the wikilink. Completed commentary/final
+replies use the same pattern with direction `to-user` and the agent author.
+Known message fields in protocol records contain wikilinks as well. UI and wire
+messages still contain real text. Protocol echoes reuse references using message
+identity, not just matching text; two identical human submissions remain two
+authored entries. Text entries are immutable and protected from agent edits.
+
+Stream deltas each get their own authored fragment body before the corresponding
+protocol event. A completed reply additionally gets its full-text entry; deltas
+are not presented as completed messages. If a turn is interrupted, its fragments
+remain. A failure between text and metadata can leave an unreferenced text entry;
+the driver stops rather than rolling back or rewriting evidence. Earlier ledgers
+retain their original format. Startup records `authored-text-links-v1` for new runs.
+
+System instructions, reasoning, tool arguments/results, usage snapshots,
+failures and exit status retain their harness-authored event treatment. Extraction
+only visits defined message slots; tool payloads cannot assert a human speaker.
+A deliberate `ledger_write` note is agent-authored. Tools cannot
 choose an author, modify harness names, add protected tags, or update an entry
 with a protected author/tag. Agent revisions must cite the current `prev` id.
 History remains intact; no delete/untag tool is exposed. Tags precede each new
@@ -139,10 +166,11 @@ isolated against adversarial behavior.
 python -m unittest discover -s bootstrap-harness/gpt-codex-harness/task-4-ledger -p test_task4.py -v
 ```
 
-Thirteen offline tests use the actual scribe and disposable local fixtures.
+Nineteen offline tests use the actual scribe and disposable local fixtures.
 They exercise histories, authors/tags, failed writes, path boundaries, streaming,
-usage, dispatch, and HTTP/ledger download. Live evidence and the first pilot's
-tag-interface discrepancy are preserved in `../mem/task-4-record.md`.
+usage, dispatch, HTTP/ledger download, transcript links and text/metadata ordering.
+Live evidence and the first pilot's tag-interface discrepancy are preserved in
+`../mem/task-4-record.md`; the message-author change is in `../mem/message-authorship.md`.
 
 `ledger_store.py` owns the scribe and policies; `agent_tools.py` owns tool schemas
 and handlers; `session.py` owns the one App Server worker; `protocol.py` handles

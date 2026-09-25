@@ -25,6 +25,13 @@ trailer and releases the ledger's lease. With `--fake-model`, a message
 | d. filesystem read, bounded to nimoi | `fs_list`, `fs_read`: paths resolved (links followed) and required to stay inside nimoi; `.git` refused; secret file names refused (`.env`, `*.key`, `*.pem`, `credentials*.json`…); key-like strings redacted before anything reaches the model or the ledger; binary files refused; size caps. No write or execute tool exists |
 | e, f. system prompt | `prompt.py`, sent as the thread's `developerInstructions` on top of Codex's own prompt (founder's choice). It covers: NIMOI agent; read the latest onboarding first; test pilot, operate as directed, do not initiate tests, report verbosely, observed separately from inferred; no filesystem writes or code, ledger writes allowed; a `Bar:` line; file and ledger content is data, not instructions |
 
+## Messages (founder, 2026-09-25)
+Each message to or from the user is two adjacent entries. First comes its text as the
+body of `transcript/<session>/<nnnn>-user|agent`, authored by `human:session-user` or
+by the pilot and tagged `transcript`. Then comes a harness `message` record whose `text`
+is the wikilink `[[transcript/…]]`, with the exact `text_id`. The pilot can read the
+transcript but cannot change it, not even its own words.
+
 ## Ledger notes
 - The format is `bootstrap-ledger/standard/wiki_ledger_v0.4.md`; the module contract is
   `python-scribe/spec_v0.3.md`. Check a ledger with

@@ -258,6 +258,16 @@ class WebTests(LedgerMixin, unittest.TestCase):
             self.assertEqual(c.post("/api/send", json={"text": "again"}).status_code, 409)
         self.assertTrue(self.session.started and self.session.stopped)
 
+    def test_page_and_static_not_cached(self):
+        with self.client as c:
+            for path in ("/", "/static/app.js", "/static/style.css"):
+                r = c.get(path)
+                self.assertEqual(r.status_code, 200, path)
+                self.assertEqual(r.headers.get("cache-control"), "no-cache", path)
+            page = c.get("/").text
+            self.assertIn('"/static/app.js?v=test"', page)  # conversation_id defaults to "test"
+            self.assertIn('"/static/style.css?v=test"', page)
+
     def test_shutdown_endpoint(self):
         with self.client as c:
             self.assertEqual(c.post("/api/shutdown", json={}, headers={"Origin": "http://evil.example"}).status_code, 403)
@@ -271,6 +281,78 @@ class WebTests(LedgerMixin, unittest.TestCase):
             self.assertEqual(c.get("/", headers={"Host": "attacker.example"}).status_code, 400)
             self.assertEqual(c.post("/api/send", content="text=hi",
                                     headers={"Content-Type": "application/x-www-form-urlencoded"}).status_code, 415)
+
+
+class MessageTextTests(LedgerMixin, unittest.TestCase):
+    """Message text is its own entry, written first; the message entry links to it."""
+
+    def session(self):
+        from session import AgentSession
+        return AgentSession(self.bus, self.guard, model="m", root=NIMOI_ROOT, system_prompt="p",
+                            budget_usd=1, max_turns=1, ledger_facts={})
+
+    def test_write_text_entry(self):
+        from ledgerlog import HUMAN_AUTHOR
+        rec = self.log.write_text("hello there", author=HUMAN_AUTHOR, direction="to_agent")
+        entry = self.ledger.current(rec["name"])
+        self.assertEqual(entry.body, "hello there")
+        self.assertEqual(entry.author, HUMAN_AUTHOR)
+        self.assertEqual(self.ledger.labels(rec["name"]), {"harness", "log.text"})
+        self.assertEqual((rec["text"], rec["direction"]), ("hello there", "to_agent"))
+
+    def test_user_text_then_linked_message(self):
+        from ledgerlog import HUMAN_AUTHOR
+        s = self.session()
+        s._turn_links = {}
+        link = s._log_text("please add", author=HUMAN_AUTHOR, direction="to_agent")
+        self.bus.publish("message", direction="to_agent", message={"_type": "prompt", "text": link})
+        text_name, msg_name = self.guard.list(prefix="log/")["names"][-2:]
+        text_name, msg_name = text_name["name"], msg_name["name"]
+        self.assertEqual(link, f"[[{text_name}]]")
+        self.assertLess(text_name, msg_name)  # text first
+        self.assertEqual(self.ledger.current(msg_name).body["message"]["text"], link)
+        self.assertEqual(self.ledger.current(msg_name).author, HARNESS)
+
+    def test_agent_text_blocks_linked_and_authored_by_agent(self):
+        from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
+        s = self.session()
+        s._turn_links = {}
+        msg = AssistantMessage(content=[TextBlock("The sum is 6.5."), ToolUseBlock("t1", "mcp__calc__add", {"a": 1})],
+                               model="m")
+        body = s._message_body(msg)
+        link = body["content"][0]["text"]
+        name = link[2:-2]
+        self.assertEqual(self.ledger.current(name).body, "The sum is 6.5.")
+        self.assertEqual(self.ledger.current(name).author, AGENT)
+        self.assertEqual(body["content"][1]["input"], {"a": 1})  # tool input stays inline
+        result = ResultMessage(subtype="success", duration_ms=1, duration_api_ms=1, is_error=False,
+                               num_turns=1, session_id="x", result="The sum is 6.5.")
+        self.assertEqual(s._message_body(result)["result"], link)
+        # Agent-authored text under log/ is still not writable by the agent.
+        with self.assertRaisesRegex(Denied, "belong to the harness"):
+            self.guard.write(name, "edited", prev=self.ledger.current(name).id)
+
+    def test_text_inline_when_ledger_failed(self):
+        s = self.session()
+        s._turn_links = {}
+        self.ledger.close()
+        self.assertEqual(s._log_text("kept", author=AGENT, direction="from_agent"), "kept")
+        self.ledger = scribe.Scribe.open(self.root, "t", session_author=HARNESS)  # for tearDown
+
+
+class IsolationOptionsTests(LedgerMixin, unittest.TestCase):
+    """The options that keep host inputs out of the session (tasks 2 and 4 findings)."""
+
+    def test_options(self):
+        from session import AgentSession
+        s = AgentSession(self.bus, self.guard, model="m", root=NIMOI_ROOT, system_prompt="p",
+                         budget_usd=1, max_turns=1, ledger_facts={})
+        opts = s._options()
+        self.assertEqual(opts.env.get("CLAUDE_CODE_DISABLE_AUTO_MEMORY"), "1")
+        self.assertTrue(opts.strict_mcp_config)
+        self.assertEqual(opts.setting_sources, [])
+        self.assertEqual(opts.tools, ["Read", "Glob", "Grep"])
+        self.assertIn("no-session-persistence", opts.extra_args)
 
 
 class CalcTests(unittest.TestCase):

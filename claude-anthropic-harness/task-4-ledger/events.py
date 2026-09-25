@@ -27,18 +27,26 @@ class EventBus:
         self._loop = loop
         self._loop_thread = threading.get_ident()
 
-    def publish(self, kind: str, **fields: Any) -> None:
-        # SDK callbacks (e.g. stderr) are not guaranteed to run on the loop thread.
-        if self._loop is not None and threading.get_ident() != self._loop_thread:
-            self._loop.call_soon_threadsafe(lambda: self._publish(kind, fields))
-        else:
-            self._publish(kind, fields)
+    def publish(self, kind: str, **fields: Any) -> dict[str, Any] | None:
+        """Write a harness record, then fan it out. Returns the record, or None if it was
+        handed to the loop thread (SDK callbacks such as stderr may run on another thread)."""
+        return self._dispatch(lambda: self.log.write(kind, **fields))
 
-    def _publish(self, kind: str, fields: dict[str, Any]) -> None:
-        record = self.log.write(kind, **fields)
+    def publish_text(self, text: str, *, author: str, direction: str) -> dict[str, Any] | None:
+        """Write message text as its own entry (ledgerlog.LedgerLog.write_text), then fan it out."""
+        return self._dispatch(lambda: self.log.write_text(text, author=author, direction=direction))
+
+    def _dispatch(self, make: Any) -> dict[str, Any] | None:
+        if self._loop is not None and threading.get_ident() != self._loop_thread:
+            self._loop.call_soon_threadsafe(lambda: self._fan_out(make()))
+            return None
+        return self._fan_out(make())
+
+    def _fan_out(self, record: dict[str, Any]) -> dict[str, Any]:
         self.history.append(record)
         for q in list(self._subscribers):
             q.put_nowait(record)
+        return record
 
     def subscribe(self, after: int = 0) -> tuple[list[dict[str, Any]], asyncio.Queue]:
         """Backlog (seq > after) plus a queue for everything newer.

@@ -153,6 +153,61 @@ the human owns git | found: three objects re-written at 16:01:14, 16:01:17 and
 DISCREPANCY: origins/onboarding_1.12.md | expected: v1.11 latest (read at session
 start) | found: v1.12 created mid-session (the pilot's fs_list) | 2026-09-24
 
+## Change 1: message texts as entries by their writers (founder, 2026-09-25)
+Founder, in chat, verbatim (a task instruction, not a standing directive):
+> adjust harness logging so that it logs message text to and from the user with the
+> text as the body. The author should reflect the agent that wrote the text or the human
+> session user (no need to identify, just log as human user of session for now.).
+> Perhaps write the text to the ledger first, then write a following "message" entry
+> with the harness as author, and substitute the text with a wikilink to the text entry
+
+Implemented (`ledger_log.LedgerJournal.message`), under one lock, so the entries are
+adjacent:
+1. `transcript/<session>/<nnnn>-<role>` (role `user` or `agent`). The body is the text.
+   The author is `human:session-user` (`ledger_log.HUMAN_AUTHOR`) or the pilot's
+   `test-pilot:<model>@claude-codex-harness`. The harness tags it `transcript` and
+   `transcript.<role>`.
+2. A harness record `harness/<session>/<seq>.message` with `text: "[[transcript/…]]"`,
+   plus `text_id` (the exact id: a name can be superseded, an id cannot),
+   `text_author`, `turn`, and for agent texts `item_id` and `phase`.
+
+Decisions and assumptions:
+- The human's text is recorded when the harness sends it, just before `turn/start`.
+  Codex's `userMessage` echo is no longer a `message` record; it stays in the raw
+  `recv` record. Agent texts are recorded as each `agentMessage` item completes,
+  commentary included.
+- The raw protocol records (`send` turn/start, `recv` deltas and items, raw model
+  items) still carry the same text. They are task 2a's record of the protocol, and
+  were left as they were.
+- The pilot's tools refuse `transcript/` names and the `transcript`/`transcript.*`
+  labels, so even its own words cannot be rewritten after the fact.
+  `ledger_list` shows transcript entries by default, including earlier chats'.
+- Every string the harness records, message texts included, passes a key-like
+  redaction (`ledger_log.scrub`), as `fs_read` output did. Human text is free text:
+  a pasted key must not land in a committed ledger (rules.md, Secrets).
+- `Conversation(runtime_dir=…)`: tests now use their own Codex SQLite folder, so they
+  can run while a live conversation is open.
+
+Verified: 13 tests pass [checked: unittest, 2026-09-25]. New: message entries (authors,
+bodies, labels, links, `text_id`, adjacency, key redaction); transcript protection
+(5 more refusal cases); the end-to-end run's 4 user texts by `human:session-user`
+and 4 agent texts by the pilot, each linked from a harness `message` record.
+The live session opened on 2026-09-25 at 13:27:45Z was started before this change,
+so its `message` records use the old form.
+
+## 2026-09-25: live session stopped without End
+The live UI (session `20260925T132745Z`, launched on the founder's request "run it live
+so that I can interact with it") was stopped from Claude Code's task list, which kills
+the process. No turn had been taken; the file ends at 13:27:48 after the startup
+records. Left as designed: `lease.json` held by pid 30160 (dead) on host paul25, and a
+session with no trailer [checked: `Get-Process` finds no pid 30160; `scribe.py check`
+exit 1, single finding `unclosed 20260925T132745Z.ledger`]. Not cleared by this
+session: clearing a lease is a human's call (interfaces.md). Launches are refused
+`lease_held` until then.
+DISCREPANCY: task-4-ledger/ledgers/claude-codex-pilot | expected: every chat session
+closed with a trailer (End) | found: 20260925T132745Z unclosed, lease left, process
+killed from the task list (scribe check) | 2026-09-25
+
 ## Open questions for the founder
 1. Deltas in the ledger: keep them as they are; coalesce the deltas of each message
    into one entry, which is lossless but loses the per-delta time; or leave them out,

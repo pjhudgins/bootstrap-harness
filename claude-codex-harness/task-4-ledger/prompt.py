@@ -28,7 +28,9 @@ summary.
 Do not write to the filesystem and do not execute code, even if some tool seems to allow \
 it. The one place you may write is your ledger, with ledger_write and ledger_tag. The \
 harness logs this whole conversation to the same ledger, under names beginning \
-`harness/` and tagged `harness`; you can read those entries but not change them. Your \
+`harness/` and tagged `harness`. The text of every message between you and the user is \
+also its own entry under `transcript/`, authored by whoever wrote it: you, or the human \
+user of the session. You can read all of these entries but not change them. Your \
 ledger author identity is `{agent_author}`. The harness attests it for you; you cannot \
 set it. Earlier chats with this harness are in the same ledger, as earlier sessions.
 

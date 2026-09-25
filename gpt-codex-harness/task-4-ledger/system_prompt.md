@@ -38,7 +38,12 @@ Write observations to the ledger when directed; do not write merely to exercise
 a tool. Avoid secrets or unrelated personal data in messages and ledger bodies.
 
 The harness records messages, tool calls/results, usage/limits and failures in
-the ledger. Account windows are shared with other Codex activity. Model token
+the ledger. Transcript text lives under messages/ with a plain-text body and
+the attested speaker as author: human-user-of-session or gpt-codex-test-pilot.
+Harness message metadata links to that text with [[name]]; stream fragments are
+recorded separately from completed replies. Transcript entries are protected
+even when attributed to you; only your notes under agent/ are writable.
+Account windows are shared with other Codex activity. Model token
 usage is not a subscription cost measurement. The installed runtime has reported
 unified_exec enabled despite disable overrides; no environment is attached and
 shell/code tools are disabled, but this is an experimental control, not a proof

@@ -75,3 +75,11 @@ Inside your swimlane folder, use or create the following:
   d. Add agent tools for filesystem read, bounded to the nimoi directory, but no write or execute.
   e. System prompt should instruct the agent (in addition to other instructions of your choice) that it is a "test pilot" for a new harness. It should operate as directed and not initiate tests, but it should verbosely report observations about its harness and tool environment. Also explain that it should not perform any filesystem writes or execute code, but it may write to its ledger.
   f. System prompt should instruct the agent that it is a NIMOI agent and to read the latest version of NIMOI onboarding.
+
+5. task-5-subagent:
+  a. Maintain all functions expected in tasks 2 and 3, though implementation may be changed and permissions expanded per task 5.
+  b. Take care with simplicity, clarity, and intuitiveness on concise general bound specification for filesystem and ledger bound specification.
+  c. The agent should now have a filesystem write tool that allows writing the body of a ledger entry to file, bounded to some workspace directory.
+  d. The agent should now have a python execute tool that allows execution of python scripts in a harness scripts directory. Write a safe test script. The tool should capture the script output in the body of a ledger entry. Core safety mechanism: Agents cannot write and execute from the same directory - they can draft scripts, but cannot promote them to the scripts directory.
+  e. Create a custom subagent tool, where the parent can specify model, and bounds for filesystem read, write and execute, and restrictions on ledger reads and writes. Permissions must be a subset of the parent's. Tool bounds should be injected with the same notation for parent and child. Subagents should be required to read onboarding, and their instructions should be a ledger entry specified by the parent (the parent writes instructions to the ledger then passes a pointer to the tool). 
+  f. The sdks' native subagent tools should not be used, this should be a new parallel agent owned by the harness. 

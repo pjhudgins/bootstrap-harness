@@ -52,13 +52,27 @@ function setComposer(state) {
 
 // ---- renderers ---------------------------------------------------------------------------
 
+// Message text arrives first as a `text` record (its own ledger entry); the `message` record
+// that follows carries "[[name]]" in its place. Text still inline in a message means the
+// ledger write failed, so that text is drawn from the message instead.
+const isLink = (t) => typeof t === "string" && /^\[\[[^\]]+\]\]$/.test(t);
+
 const renderers = {
+  text(rec) {
+    if (rec.name) chat(rec.direction === "to_agent" ? "bubble user" : "bubble agent", rec.text);
+    side(rec, `${rec.direction === "to_agent" ? "→" : "←"} ${rec.author} · ${short(rec.text, 80)}`);
+  },
+
   message(rec) {
     const m = rec.message || {};
-    if (m._type === "prompt") { chat("bubble user", m.text); side(rec, "→ user prompt", "raw"); return; }
+    if (m._type === "prompt") {
+      if (!isLink(m.text)) chat("bubble user", m.text);
+      side(rec, `→ user prompt ${isLink(m.text) ? m.text : ""}`, "raw");
+      return;
+    }
     if (m._type === "AssistantMessage") {
       for (const b of m.content || []) {
-        if (b._type === "TextBlock" && b.text.trim()) chat("bubble agent", b.text);
+        if (b._type === "TextBlock" && b.text.trim() && !isLink(b.text)) chat("bubble agent", b.text);
         else if (b._type === "ToolUseBlock") chat("chip", `→ ${toolLabel(b.name)} ${short(b.input, 100)}`);
       }
     } else if (m._type === "UserMessage" && Array.isArray(m.content)) {
@@ -106,7 +120,10 @@ const renderers = {
 
   usage(rec) {
     const u = rec.usage || {};
-    if (rec.is_error) chat("bubble error", `Turn ${rec.turn} ended: ${rec.subtype}`);
+    if (rec.is_error) {
+      const api = rec.api_error_status ? ` · API error ${rec.api_error_status}` : "";
+      chat("bubble error", `Turn ${rec.turn} failed (subtype ${rec.subtype}${api})${rec.result ? ": " + rec.result : ""}`);
+    }
     const tokens = `in ${u.input_tokens ?? "?"} · out ${u.output_tokens ?? "?"} · cache w ${u.cache_creation_input_tokens ?? 0} r ${u.cache_read_input_tokens ?? 0}`;
     side(rec, `${rec.subtype} · ${rec.num_turns} turns · this turn ${money(rec.turn_cost_usd)} · session ${money(rec.session_cost_usd)} · ${tokens}`, rec.is_error ? "error" : "");
   },

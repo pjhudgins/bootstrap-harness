@@ -122,7 +122,10 @@ def build_server(guard: LedgerGuard):
         return {"content": [{"type": "text", "text": f"error: {message}"}], "is_error": True}
 
     @tool("read", "Read one ledger name: its current body, id, author and labels. "
-          "Set history to include every earlier body.",
+          "Set history to include every earlier body. In the result, `bound` is true when the "
+          "name has ever been written (it then has a `current` entry) and false when it has "
+          "not (labels alone do not bind a name); `deleted` is true when the current body is a "
+          "deletion (null). `current.prev` is the id that write replaced, null for a first write.",
           {"type": "object", "properties": {
               "name": {"type": "string"},
               "history": {"type": "boolean", "default": False},
@@ -136,7 +139,9 @@ def build_server(guard: LedgerGuard):
             return err(repr(e))
 
     @tool("list", "List ledger names, optionally filtered by name prefix and/or label. "
-          "Harness log entries are under log/<session>/ and carry the labels 'harness' and 'log.<kind>'.",
+          "Harness log entries are under log/<session>/ and carry the labels 'harness' and 'log.<kind>'. "
+          "Message text to and from the user is its own entry labelled 'log.text', whose body is the "
+          "text and whose author is the writer; the 'message' entry that follows links to it as [[name]].",
           {"type": "object", "properties": {
               "prefix": {"type": "string", "default": ""},
               "label": {"type": "string"},

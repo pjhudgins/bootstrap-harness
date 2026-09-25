@@ -62,6 +62,33 @@ class LedgerJournalTests(unittest.TestCase):
             self.assertEqual(view.labels(names[0]), {"harness", "log.recv"})
             self.assertEqual(view.current(names[2]).body["unrecordable"], "bad_body")
 
+    def test_messages_are_texts_by_their_writers_linked_from_harness_records(self):
+        with scratch_dir() as tmp:
+            journal = ledger_log.LedgerJournal(tmp)
+            journal.message("user", "hello, my key is sk-proj-ABCDEFGHIJKLMNOPQRSTUVWX12",
+                            ledger_log.HUMAN_AUTHOR, turn=1)
+            journal.message("agent", "hi back", AGENT, turn=1, phase="final_answer")
+            journal.close()
+            view = scribe.load(tmp, ledger_log.LEDGER_NAME)
+            texts = view.labelled("transcript")
+            self.assertEqual(texts, [f"transcript/{journal.session}/0001-user",
+                                     f"transcript/{journal.session}/0002-agent"])
+            user, agent = (view.current(n) for n in texts)
+            self.assertEqual((user.author, agent.author), (ledger_log.HUMAN_AUTHOR, AGENT))
+            self.assertEqual(agent.body, "hi back")
+            self.assertNotIn("sk-proj-ABCDEF", user.body)  # a pasted key never lands
+            self.assertIn("<redacted: key-like string>", user.body)
+            self.assertEqual(view.labels(texts[0]), {"transcript", "transcript.user"})
+            records = [view.current(n) for n in view.labelled("log.message")]
+            self.assertEqual([r.body["text"] for r in records], [f"[[{n}]]" for n in texts])
+            self.assertEqual([r.body["text_id"] for r in records], [user.id, agent.id])
+            self.assertEqual([r.body["text_author"] for r in records],
+                             [ledger_log.HUMAN_AUTHOR, AGENT])
+            self.assertTrue(all(r.author == ledger_log.HARNESS_AUTHOR for r in records))
+            # adjacent: text, its two tags, then the harness record
+            line = lambda entry_id: int(entry_id.rsplit(":", 1)[1])
+            self.assertEqual(line(records[0].id), line(user.id) + 3)
+
     def test_each_chat_is_a_new_session_file_in_one_ledger(self):
         with scratch_dir() as tmp:
             for _ in range(2):  # the scribe waits for a new second itself (W§5.5)
@@ -83,6 +110,7 @@ class LedgerToolTests(unittest.TestCase):
         # a name outside harness/ that the harness protects by tag
         self.journal.scribe.write("shared/rules", "harness text", author=ledger_log.HARNESS_AUTHOR)
         self.journal.scribe.tag("shared/rules", "harness", author=ledger_log.HARNESS_AUTHOR)
+        self.journal.message("agent", "something the pilot said", AGENT)
         self.box = tools.Toolbox(self.journal.scribe, AGENT, fs_root=tmp.name)
 
     def test_agent_writes_are_attested_and_tagged(self):
@@ -109,7 +137,14 @@ class LedgerToolTests(unittest.TestCase):
 
     def test_harness_entries_cannot_be_overwritten_or_retagged(self):
         harness_name = self.journal.scribe.names()[0]
+        said = self.journal.scribe.labelled("transcript")[0]  # even the pilot's own words
         cases = [
+            ("ledger_write", {"name": said, "body": "what I meant to say",
+                              "prev": self.journal.scribe.current(said).id}),
+            ("ledger_write", {"name": "transcript/new", "body": "x"}),
+            ("ledger_write", {"name": "pilot/f", "body": "x", "labels": ["transcript"]}),
+            ("ledger_write", {"name": "pilot/g", "body": "x", "labels": ["transcript.user"]}),
+            ("ledger_tag", {"name": said, "label": "transcript", "remove": True}),
             ("ledger_write", {"name": harness_name, "body": "x",
                               "prev": self.journal.scribe.current(harness_name).id}),
             ("ledger_write", {"name": "harness/new", "body": "x"}),
@@ -130,16 +165,18 @@ class LedgerToolTests(unittest.TestCase):
                 self.assertFalse(ok)
         self.assertEqual(len(self.journal.scribe.names(deleted=True)), before)
         self.assertEqual(self.journal.scribe.current("shared/rules").body, "harness text")
+        self.assertEqual(self.journal.scribe.current(said).body, "something the pilot said")
         self.assertIn("harness", self.journal.scribe.labels("shared/rules"))
 
     def test_reading_and_listing(self):
         call(self.box, "ledger_write", name="pilot/obs", body="seen")
-        _, listed = call(self.box, "ledger_list")
-        self.assertEqual(listed["names"], ["pilot/obs", "shared/rules"])
+        _, listed = call(self.box, "ledger_list")  # transcript shown, harness hidden
+        said = self.journal.scribe.labelled("transcript")[0]
+        self.assertEqual(listed["names"], ["pilot/obs", "shared/rules", said])
         _, everything = call(self.box, "ledger_list", include_harness=True)
-        self.assertEqual(everything["total"], 3)
+        self.assertEqual(everything["total"], 5)  # + the run record and the message record
         _, harness = call(self.box, "ledger_list", label="harness", include_harness=True)
-        self.assertEqual(harness["total"], 2)
+        self.assertEqual(harness["total"], 3)
         _, read = call(self.box, "ledger_read", name=everything["names"][0], history=True)
         self.assertEqual(read["current"]["author"], ledger_log.HARNESS_AUTHOR)
         self.assertIn("harness record", read["current"]["body"])
@@ -280,7 +317,8 @@ class ConversationTests(unittest.TestCase):
 
     def test_tools_and_ledger_through_a_conversation(self):
         with scratch_dir() as tmp:
-            c = conv.Conversation(codex_home=str(OFFLINE_HOME), fake=True, ledger_root=tmp)
+            c = conv.Conversation(codex_home=str(OFFLINE_HOME), fake=True, ledger_root=tmp,
+                                  runtime_dir=Path(tmp) / "codex-sqlite")
             try:
                 c.start()
                 session = next(e for e in c.events.after(0, timeout=5) if e["type"] == "session")
@@ -320,6 +358,15 @@ class ConversationTests(unittest.TestCase):
                          and view.current(n).body["message"].get("method") == "thread/start")
             self.assertIn("test pilot", start["developerInstructions"])
             self.assertIn("onboarding", start["developerInstructions"])
+            # every message's text, under its writer's name, linked from a harness record
+            texts = [view.current(n) for n in view.labelled("transcript")]
+            self.assertEqual([t.author for t in texts if t.name.endswith("-user")],
+                             [ledger_log.HUMAN_AUTHOR] * 4)
+            self.assertEqual([t.author for t in texts if t.name.endswith("-agent")],
+                             [c.agent_author] * 4)
+            self.assertIn('"body": "the ledger tool works"', texts[0].body)
+            links = {view.current(n).body["text"] for n in view.labelled("log.message")}
+            self.assertEqual(links, {f"[[{t.name}]]" for t in texts})
 
 
 if __name__ == "__main__":

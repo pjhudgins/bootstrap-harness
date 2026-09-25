@@ -82,6 +82,7 @@ class Client:
         self.next_id = 0
         self.methods = {}
         self.thread_id = None
+        self.human_message_id = None
         self.turns = {}
         self.items = []
         self.calls = []
@@ -103,7 +104,7 @@ class Client:
             self.queue.put((kind, None))
 
     def send(self, message):
-        self.journal.write("send", message)
+        self.journal.write("send", message, human_id=self.human_message_id)
         self.process.stdin.write(json.dumps(message, allow_nan=False) + "\n")
         self.process.stdin.flush()
 
@@ -152,7 +153,7 @@ class Client:
             self.journal.write("account", {key: account.get(key)
                                           for key in ("type", "planType")})
         else:
-            self.journal.write(kind, message)
+            self.journal.write(kind, message, human_id=self.human_message_id)
 
     def handle_request(self, message):
         params = message.get("params", {})
@@ -189,7 +190,8 @@ class Client:
                     raise RpcError(f"{method}: {message['error']['message']}")
                 return message["result"]
 
-    def run_turn(self, prompt):
+    def run_turn(self, prompt, message_id=None):
+        self.human_message_id = message_id
         self.deadline = time.monotonic() + 180
         result = self.request("turn/start", {"threadId": self.thread_id,
             "input": [{"type": "text", "text": prompt}]})

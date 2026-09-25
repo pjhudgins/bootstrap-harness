@@ -63,6 +63,25 @@ bytes `-text`, and `.gitignore` excludes `lease.json`. No git commands are used.
 | --- | --- | --- | --- |
 | Harness | `harness` | `harness/00000001`, etc., never reused | `harness`, `log.<event-kind>` |
 | Agent | `agent.claude.test-pilot` | `pilot/<name>` | `pilot.note`, `pilot.observation`, `pilot.question` only |
+| Session user text | `human.session-user` | `messages/user/<counter>` | `message.text`, `message.user` |
+| Agent reply text | `agent.claude.test-pilot` | `messages/assistant/<counter>` | `message.text`, `message.assistant` |
+| SDK error text | `harness` | `messages/runtime/<counter>` | `message.text`, `message.runtime` |
+
+As of 2026-09-25, user submissions and each assistant text block are written first
+as string bodies (with existing credential redaction). The following harness-authored
+`log.message` record retains metadata and substitutes `[[messages/...]]` for each
+text. Its `text_entries` lists the name, exact body ID, author and link. User
+acceptance/send-attempt records also reference that same text. A repeated final
+SDK result reuses the reply link when its text matches. Tool results remain
+harness diagnostics; an SDK `UserMessage` is not assumed to be human-authored.
+Text classification tags are written by the harness. Message names are outside
+the agent's writable `pilot/` namespace and are never revised by this adapter.
+Each text block remains separate, preserving order relative to tool calls.
+
+These links sit in JSON string fields. W§14 leaves recursive interpretation of
+links inside JSON bodies unresolved, and the current shared scribe does not expand
+links. Consumers can use `text_entries` for explicit resolution. This storage
+change does not promise automatic transclusion in the shared reader.
 
 For example, messages carry `log.message`, tool requests `log.tool_request`,
 Python results `log.python_tool_result`, and usage `log.usage`. Logs include
@@ -109,6 +128,10 @@ Offline checks use the real scribe for append/history/tag/lease validation,
 filesystem fixtures for read bounds, and HTTP requests for the local UI boundary.
 No model calls occur in these tests. Detailed live evidence and failures are in
 `../mem/task-4-record.md`.
+
+Verified 2026-09-25: 16 offline tests pass, including text authorship, metadata/link
+ordering, multiline and Unicode preservation, result-link reuse, credential
+redaction, runtime/tool attribution and failure between text and metadata writes.
 
 Verified 2026-09-24: 13 offline tests pass. A two-turn browser test exercised all
 five tools, completed onboarding v1.12, created/read/revised `pilot/smoke`, and

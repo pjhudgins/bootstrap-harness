@@ -2,6 +2,19 @@
 
 ## Current: task-4-ledger completed at the prototype bar
 
+2026-09-25 back-specification completed: `mem/task-4-spec.md` describes current
+task-4 requirements and design decisions in a three-level hierarchy, including
+the message-authorship change. Bar: enough behavioral and policy detail to
+reproduce the prototype and preserve its known limits. [checked: current source,
+prompt, README and task records; documentation only]
+
+2026-09-25 follow-up completed: transcript text bodies are authored by the human
+session user or agent, followed by harness message records linking to that text.
+Bar: correct authorship and durable ordering without losing stream/failure
+records. Nineteen offline checks and one live conversation passed; the closed
+test ledger has no reader findings. [checked: tests/browser/ledger receipts in
+`mem/message-authorship.md`] Existing ledgers remain in their original format.
+
 2026-09-24: Integrated the existing bootstrap-ledger scribe into task-4-ledger.
 Fresh ledger per conversation, attested harness/agent authors, protected tags,
 agent ledger tools, bounded NIMOI read tools, and an onboarding/test-pilot system
@@ -21,7 +34,9 @@ unified_exec limitation remains; no general isolation guarantee is claimed.
 
 Entry: `task-4-ledger/README.md`. Evidence, assumptions and discrepancy:
 `mem/task-4-record.md`. New session left ready at http://127.0.0.1:52201 (while
-driver runs), ledger `chat-20260924t202827z-b92094ed`. No git commands performed.
+driver runs), relaunched after the logging update on 2026-09-25 with ledger
+`chat-20260925t135031z-d637a55a`.
+Fresh empty UI showed Ready. [checked: driver output and browser AX] No git commands performed.
 Next: founder review or next assignment. Status: completed at the stated bar.
 
 ## Task 3: local UI

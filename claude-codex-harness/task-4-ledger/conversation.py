@@ -135,8 +135,12 @@ class Conversation:
     """start() once, send() per user message, interrupt() to stop a turn, close() once."""
 
     def __init__(self, codex=None, codex_home=None, model=None, fake=False,
-                 ledger_root=ledger_log.LEDGER_ROOT, fs_root=ledger_log.NIMOI_ROOT):
+                 ledger_root=ledger_log.LEDGER_ROOT, fs_root=ledger_log.NIMOI_ROOT,
+                 runtime_dir=RUNTIME_DIR):
         self.events = EventLog()
+        # Codex's SQLite state. Tests pass their own, so they never share it with a live
+        # conversation running at the same time.
+        self.runtime_dir = Path(runtime_dir)
         # Opening the ledger takes its lease: a second harness on it is refused here.
         self.journal = ledger_log.LedgerJournal(ledger_root)
         self.codex, self.codex_home = codex, codex_home
@@ -165,9 +169,10 @@ class Conversation:
             env.setdefault("CODEX_HOME", str(Path.home() / ".codex"))
         self.env = env
         codex = cc.find_codex(self.codex)
-        RUNTIME_DIR.mkdir(exist_ok=True)
+        self.runtime_dir.mkdir(parents=True, exist_ok=True)
         command = [codex, "app-server", "--listen", "stdio://",
-                   "-c", f"sqlite_home={json.dumps(str(RUNTIME_DIR))}", *policy.disable_flags()]
+                   "-c", f"sqlite_home={json.dumps(str(self.runtime_dir))}",
+                   *policy.disable_flags()]
         if self.fake:
             self.fake_model = fake_model.FakeModel(fake_reply, on_request=self._on_model_request)
             command += self.fake_model.codex_args()
@@ -301,6 +306,8 @@ class Conversation:
     def _run_turn(self, text):
         self._stop_turn.clear()
         self.stats["turns"] += 1
+        # The human's text, under the human's name, before it goes to the agent.
+        self.journal.message("user", text, ledger_log.HUMAN_AUTHOR, turn=self.stats["turns"])
         started = self.server.request("turn/start", {
             "threadId": self.thread_id,
             "input": [{"type": "text", "text": text, "text_elements": []}]})
@@ -374,13 +381,15 @@ class Conversation:
         elif method == "item/completed":
             item = params["item"]
             kind = item.get("type")
-            if kind in ("userMessage", "agentMessage"):
-                role = "agent" if kind == "agentMessage" else "user"
-                self.journal.write("message", role=role, text=item_text(item),
-                                   phase=item.get("phase"))
-                if role == "agent":
-                    self.events.publish("agent_message", item_id=item.get("id"),
-                                        text=item_text(item), phase=item.get("phase"))
+            if kind == "agentMessage":
+                # The agent's text, under the agent's name; the harness's message record
+                # links to it. (A userMessage item is Codex's echo of text the harness
+                # already recorded in _run_turn; it stays in the raw recv record only.)
+                self.journal.message("agent", item_text(item), self.agent_author,
+                                     turn=self.stats["turns"], item_id=item.get("id"),
+                                     phase=item.get("phase"))
+                self.events.publish("agent_message", item_id=item.get("id"),
+                                    text=item_text(item), phase=item.get("phase"))
             elif kind in policy.TOOL_ITEMS:
                 self.journal.write("tool_item", item=item)
                 self.events.publish("tool_item", item_type=kind, status=item.get("status"),

@@ -108,3 +108,25 @@ not stopped or modified. URL/PID are temporary observations, not configuration.
 
 State: completed — task-4 prototype implemented and verified to the stated bar;
 fresh UI left running for founder review, with documented limits and discrepancies.
+
+## 2026-09-25 requested restart
+
+Bar: restart the UI with a fresh session and preserve the previous record.
+[checked: browser] Prior session showed a revoked OAuth token on its second user
+turn. Close session shut down gracefully. [checked: inspect_ledger.py] Its ledger
+is closed, has no lease and no validation findings (403 harness events, one agent
+note, one completed turn). Historical records were not changed.
+[checked: launch output and browser] Restarted on the same URL, PID 41832,
+conversation b0ab1763, ledger `chat-20260925t123458z-71b7535b40`.
+Browser shows Ready and an empty conversation. No model request sent; successful
+authentication on a future model request remains unverified.
+State: completed — UI restarted and browser reloaded.
+
+Second requested restart, 2026-09-25 09:01 local: session b0ab1763 had also reported
+revoked OAuth. Closed through UI; validator found a closed ledger, no lease,
+18 harness events, zero completed turns and no structural problems. Relaunched
+at the same URL, PID 35720, conversation d2b03ab6, ledger
+`chat-20260925t130116z-ce16642659`. [checked: browser and launch output]
+The user submitted a test while verification was underway; the new session was
+responding and invoking onboarding read tools. No model prompt sent by supervisor.
+State: completed — restart verified; user's active reply left running.

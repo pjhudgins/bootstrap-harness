@@ -132,3 +132,15 @@ Next: founder review. No scope/privilege expansion or unresolved implementation
 blocker was encountered. Status: completed at the stated prototype bar.
 
 DISCREPANCY: task-4-ledger ledger_write, expected the mandatory agent tag to be unambiguous (system/tool descriptions); first live pilot supplied [agent, agent-observation] and received a prefix-validation refusal, 2026-09-24. It retried with agent-observation, succeeded, and recorded the discrepancy itself in agent/acceptance. Source ledger chat-20260924t202208z-ca626317 is preserved. Corrected validation to accept explicit agent idempotently and clarified that the harness adds it automatically; regression check includes the explicit tag.
+
+## Founder-requested relaunch, 2026-09-25
+
+Bar: restore the existing UI to Ready with a fresh conversation/ledger and keep
+prior records intact. Founder request: "relaunch".
+
+The previous page showed Disconnected; cause was not investigated. Launched
+`serve.py --no-browser --port 52201` using existing normal-terminal authorization.
+New ledger: `chat-20260925t131115z-229ead2a/20260925T131115Z.ledger`.
+Refreshed the existing tab at http://127.0.0.1:52201; it showed Ready and an empty
+conversation. No model turn submitted. [checked: driver output and browser AX]
+Status: completed; the driver remains running for the founder.
