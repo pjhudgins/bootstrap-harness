@@ -1,0 +1,11 @@
+{
+  "fs": {
+    "read": ["nimoi:/"],
+    "write": ["workspace:/"],
+    "execute": ["scripts:/"]
+  },
+  "ledger": {
+    "read": ["/"],
+    "write": ["agent/"]
+  }
+}

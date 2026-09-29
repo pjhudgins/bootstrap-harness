@@ -2,3 +2,5 @@
 .runtime/
 # Wiki ledger lease: transient, never committed (wiki_ledger_v0.4 §5.1, §12).
 lease.json
+# Temporary files of scripts run by task 5's python_exec (TEMP/TMP point here).
+.tmp/

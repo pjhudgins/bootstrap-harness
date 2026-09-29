@@ -11,7 +11,7 @@ Rules: `../rules.md` (authoritative; no git; write only inside this swimlane). R
 - Model pinned to `claude-sonnet-5` (founder decision).
 
 ## Isolation recipe for SDK sessions (learned the hard way; see mem/task-2-decisions.md)
-`setting_sources=[]` + `strict_mcp_config=True` + `env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}` + an explicit `tools=[...]` + `--no-session-persistence`.
+`setting_sources=[]` + `strict_mcp_config=True` + `env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}` + `tools=[]` (task 5: no built-ins; every tool is harness-owned, so checks and opens use one resolver) + `--no-session-persistence`.
 Auto memory loads regardless of `setting_sources`; it keys on cwd (task 4 finding 6). Still read unconditionally: `~/.claude.json` and managed policy settings (see `ref/claude-code-docs/`).
 Without `strict_mcp_config`, the logged-in account's claude.ai connectors (Gmail, Drive, Calendar, Docs) attach silently.
 
@@ -36,7 +36,54 @@ Authors: harness `harness:claude-anthropic-harness/task-4-ledger`; agent `pilot:
 Agent tools: Read/Glob/Grep across nimoi except `candidate_repos/`; add; ledger read/list/write (writes refused under `log/`, on names labelled `harness`, on others' entries, and for protected labels).
 **End every run with the UI's End session button** (or Ctrl+C). A killed process leaves `lease.json`, which blocks the next launch until a human clears it.
 
+### task-5-subagent — done (2026-09-25; its back-spec is folded into `mem/task-6-spec.md`)
+Hardened after the peer review (`mem/peer-review-2026-09-25.md`):
+- harness-owned file tools only (no CLI Read/Glob/Grep);
+- pinned, recorded-first writes;
+- fail closed on ledger failure;
+- a stricter spawn (instructions written by the parent and pinned; `!log` by default);
+- the whole-file onboarding gate.
+Tests: 49, using a fake SDK client (`tests/fake_client.py`). After each live session, run `python task-5-subagent/audit.py`.
+Launch: `python task-5-subagent/app.py` → http://127.0.0.1:8767. Top-level bounds in `task-5-subagent/bounds.txt`, in the notation described in `bounds.py`. Own ledger: `claude-anthropic-harness-t5`. Plan, decisions and results: `mem/task-5-plan.md`.
+
+### task-6-hybrid — completed 2026-09-29, awaiting founder review
+Bar: a working prototype of a three-layer, two-lineage agent institution; every action and failure recorded; boundaries enforced where the platform allows, stated honestly where not. Not production.
+
+There are three layers:
+- **the governor**, `claude-opus-5-5`. It chats with the human, dispatches task owners and resolves their requests. It has no writes, no exec and no subagents.
+- **task owners**: Opus, Fable, `gpt-6-astra`, `gpt-6-sol` or `gpt-5.6-sol`. They run in the background and ask the governor through a self-blocking `request`.
+- **subagents**: Sonnet or higher, or Terra or higher; only owners spawn them.
+
+GPT agents run on the Codex App Server. Codex's own tools are switched off where possible and detected where not: detection stops the agent.
+
+**Launch:** `python task-6-hybrid/app.py` opens http://127.0.0.1:8768: a chat with the governor, an agent tree, activity, and approval cards. `--pilot` gives task 5's single agent. Every launch that starts Codex records a `codex_home_changes` diff of `~/.codex`. After each launch, run `python audit.py`. End sessions with the End session button (a killed process leaves `lease.json`).
+
+**Scripted runs** author their messages `developer:claude-code-session`, never the human:
+- `live_turn.py`: one turn; `--fake-model` gives the surface check against the real `~/.codex` config;
+- `live_institution.py`: one three-layer run.
+
+**Tests:** `python -m unittest discover -s tests -t .` from `task-6-hybrid/`: 81, all offline. The Codex ones run the real binary against a fake model, in the gitignored `.runtime/offline-codex-home`. `python tests/ui_demo.py` serves the UI with fake agents.
+
+**Live runs** are all in ledger `claude-anthropic-harness-t6`, and all audit ok:
+- phase 1: the GPT surface check and one GPT turn;
+- phase 3: the three-layer run, session 20260929T123834Z, $1.59.
+
+**Founder decisions** (2026-09-28/29) are in `mem/task-6-plan.md`, `mem/task-6-phase1.md` and `mem/task-6-record.md`. Among them:
+- the governor passes rules, never a bar;
+- keep `.runtime`;
+- `~/.codex` is used live, with a recorded diff.
+
+**Open for the founder** (details in `mem/task-6-record.md`):
+- onboarding's "a worker with no bar stops and asks" versus the governor passing none;
+- three discrepancies in `rules.md` recorded by a live owner;
+- phase 1's live-turn message misattributed to the human, recorded and not repaired.
+
 ## Pointers
+- `mem/task-6-plan.md` — task 6 bar, reading of the rules, architecture, founder decisions (Codex auth, GPT exec, request kinds, governor powers), phases.
+- `mem/task-6-phase1.md` — phase 1 (Codex backend): what was built, Codex 0.158 tool-surface findings, live runs, `.runtime` secrets check, decisions to confirm, open questions.
+- `mem/task-6-record.md` — phases 2–4: governance, UI, the live three-layer run and its findings, discrepancies.
+- `mem/task-6-spec.md` — back-specification of tasks 5 and 6 (R12–R20, D9–D15) on top of `task-4-spec.md`; start here to reproduce the harness.
+- `mem/peer-review-2026-09-25.md` — what the three peer lanes do differently, what was found and changed here, open questions.
 - `mem/sdk-upgrade.md` — 0.2.101 → 0.2.159: API surface check, tests, live smoke test, what changed.
 - `ref/claude-code-docs/` — snapshot of the Claude Code / Agent SDK docs, 2026-09-25 (see its README; docs are newer than the installed SDK).
 - `mem/task-1-decisions.md` — task 1 assumptions and founder answers.

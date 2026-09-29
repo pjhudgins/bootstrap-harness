@@ -27,12 +27,18 @@ from the latest `origins/onboarding_*.md`, v1.12 as of 2026-09-24.
 - To test a UI in the Claude browser pane: start `ui.py --no-browser --port N` in a
   background shell, then `preview_start` with its URL. `preview_start` by name reads
   the project-root `nimoi/.claude/launch.json` (outside this lane).
+- On Windows, a Python `http.server` binds a port another one is already serving,
+  silently (SO_REUSEADDR). Task 5's page binds exclusively; tasks 3–4's pages do not,
+  so give them a port nothing else uses (`mem/task-5-record.md`, finding 3).
 
 ## Founder authorization (2026-09-23, standing)
 Live driver runs against `~/.codex` are authorized for every task in this lane.
 Condition: record each run's `~/.codex` changes, as a before/after diff of names
 and mtimes. This does not authorize bypassing the shell sandbox. Drivers from task 2
 on record the diff themselves (`codex_home_changes`, marked by run window).
+2026-09-28, standing: live Claude Agent SDK runs (the bundled Claude CLI on the
+founder's Claude login, writing under `~/.claude`), with each run's `~/.claude` changes
+recorded the same way (founder: "Yes, standing for this lane"; `mem/task-6-plan.md`).
 
 ## Tasks
 ### task-1-hello: completed, pending founder review
@@ -68,13 +74,50 @@ streamed deltas are about 84% of the ledger; the `harness` label collides with
 topic use; whether ledger sessions are committed as they are.
 `mem/task-4-record.md`.
 
+### task-5-subagent: completed at the bar, revised after peer review; pending founder review
+Bar: a parent can delegate to a harness-owned subagent whose permissions are provably a
+subset of its own. Agents draft files and run only vetted scripts, never both in one
+place, and all of it is in the ledger. A leaking permission is worse than a refusal.
+`task-5-subagent/ui.py` (README maps rules 5a–5f and lists the record kinds). Bounds:
+five keys of entries (`bounds.py`), the same notation for every agent; the fixed rules
+are stated once, in `prompts/bounds.md`. One app-server per agent; subagents run in
+parallel with `subagent_wait` (founder: "Parallel, with wait"; "Nested, capped" at
+depth 2). Onboarding is enforced by a tool gate. `fs_write` = an exact ledger entry
+version into `workspace/`, create or replace-by-hash; `python_exec` = `scripts/*.py`
+only (human promotion), in a job object. Agents write the ledger under `agent/`. Own
+ledger: `task-5-subagent/ledgers/claude-codex-subagents/`; `check_ledger.py` checks a
+session after a run.
+2026-09-25 revision (founder: "proceed with proposed improvements"): the peer review's
+gaps closed; record format 2 (one label per entry, fragments summarised per message);
+supersession by anyone within bounds (founder: authorship is doctrine, not harness
+rules); Stop reaches every subagent. 50 tests. Live: delegation, write by id, refusals
+and Stop; checker clean. Two live findings are fixed but verified offline only (the key
+detector matched "task-…"; Stop missed a subagent still starting). `mem/task-5-record.md`.
+
+### task-6-hybrid: active — phase 1 (offline) built, paused before live runs
+Bar: a person chats with an Opus governor that dispatches task owners (Claude or GPT) on
+tickets, sees every agent's activity, and approves what exceeds the governor's bounds;
+task owners delegate under task 5's rules and ask the governor, blocking, for what they
+may not do. A leaking permission, or an action taken without the approval it needed, is
+worse than a refusal.
+`task-6-hybrid/ui.py` (README maps rules 5a-g, 6a-f). Governor: claude-opus-5-5 on the
+Claude Agent SDK (new here; drawn from the two Anthropic lanes); task owners and
+subagents on either engine, models by layer (founder, 2026-09-28). Requests: the
+governor grants up to its own bounds, the human approves the rest on the page. Rule 5g:
+code-mode GPT `exec` allowed and recorded; Codex's own sub-agent tools cannot be
+removed and stop the turn. Offline stand-ins for both engines (`--fake-model`). 55
+tests. Next: live runs (standing authorizations for `~/.codex` and `~/.claude`).
+`mem/task-6-plan.md`.
+
 ## Pointers
 - `mem/task-1-record.md` … `mem/task-4-record.md`: each task's bar, assumptions,
   founder answers, decisions, verification, findings and DISCREPANCY lines.
 - `mem/task-4-spec.md`: a back-specification of task 4 (tiered requirements and design
   decisions, with sources), for reproducing it elsewhere.
-- **Ledger lease held since 2026-09-25 13:27Z** (process killed, not ended). A human
-  clears it; see `mem/task-4-record.md`.
+- `mem/task-5-record.md`: task 5 bar, founder answers, design, verification, findings.
+- Ledger lease left by a killed process on 2026-09-25 was cleared at the founder's
+  direction the same day; session `20260925T132745Z` stays unclosed, as a finding.
+  The harness is not running. See `mem/task-4-record.md`.
 - Cross-lane: `../gpt-codex-harness/` did tasks 1 and 2 on the same architecture.
   Its `mem/task-2-record.md` has the `code_mode_host` finding; its task-2
   restriction claim probably has the same `exec` gap (`mem/task-2-record.md` here).

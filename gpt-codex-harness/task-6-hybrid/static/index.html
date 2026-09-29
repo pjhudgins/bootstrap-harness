@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NIMOI · Governance</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body><div class="app">
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark">n.</span><span>NIMOI<small>HYBRID HARNESS · TASK 6</small></span></a>
+    <div class="header-right"><span class="status" id="status" role="status">Connecting</span><button class="quiet" id="end-session">End session</button></div>
+  </header>
+  <main>
+    <section class="conversation" aria-labelledby="conversation-title">
+      <div class="conversation-heading"><div><p class="eyebrow">HUMAN ↔ GOVERNANCE</p><h1 id="conversation-title">Talk with the governor</h1></div><span class="pill">Claude Opus</span></div>
+      <div id="requests" class="requests" aria-label="Governance requests" aria-live="polite"></div>
+      <div class="transcript" id="transcript" role="log" aria-label="Governance conversation" aria-live="polite">
+        <div class="empty" id="empty"><span class="empty-mark" aria-hidden="true">↗</span><h2>Set the direction.</h2>
+          <p>Your governor communicates and dispatches.<br>Task owners do the work, with subordinate agents from either model family.</p>
+          <button class="suggestion" id="try-task">Delegate a small arithmetic task <span aria-hidden="true">↗</span></button></div>
+        <div id="messages"></div><div class="working" id="working" hidden><span class="pulse"></span>Governor is responding…</div>
+      </div>
+      <div class="error" id="error" role="alert" hidden></div>
+      <form class="composer" id="composer"><label class="sr-only" for="prompt">Message the governor</label>
+        <textarea id="prompt" rows="2" maxlength="16000" placeholder="Message the governor…" disabled></textarea>
+        <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><button class="send" id="send" type="submit" disabled>Send ↑</button></div></form>
+      <p class="footnote">One ledger per launch. Refresh keeps the session. End session stops the whole family.</p>
+    </section>
+    <aside class="sidebar" aria-label="Institution activity">
+      <section class="side-section"><p class="eyebrow">AGENT FAMILY</p><div id="agents"></div><p class="small-note">Select an agent to inspect its messages, tools and permissions.</p></section>
+      <section class="side-section"><p class="eyebrow" id="selected-label">GOVERNOR</p><div id="agent-detail"></div></section>
+      <section class="side-section"><details><summary>Account limits by agent</summary><pre id="limits"></pre></details><p class="small-note">Allowances are shared with other account activity. Provider usage categories differ.</p></section>
+      <section class="side-section"><details><summary>Session permission ceiling</summary><pre id="bounds"></pre><p class="small-note" id="workspace"></p></details>
+        <details><summary>Restriction observations</summary><p id="restriction-note">Waiting for runtime checks.</p></details></section>
+      <a class="journal-link" href="/api/ledger" download>Download session ledger ↓</a><p class="session-id" id="session-id"></p>
+    </aside>
+  </main>
+</div></body></html>

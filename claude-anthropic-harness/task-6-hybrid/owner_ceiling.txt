@@ -1,0 +1,8 @@
+# The most the governor may grant a task owner (task 6), at dispatch or on an expand_bounds request.
+# The notation is described in bounds.py. A human edits this file. A launch is refused if fs.write and
+# fs.exec overlap. Owners' ledger.read gets !log unless the governor names a log/ entry.
+fs.read       /  !/candidate_repos/
+fs.write      /bootstrap-harness/claude-anthropic-harness/task-6-hybrid/workspace/
+fs.exec       /bootstrap-harness/claude-anthropic-harness/task-6-hybrid/scripts/
+ledger.read   *
+ledger.write  work/

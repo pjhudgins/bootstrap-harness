@@ -38,7 +38,7 @@ nimoi/bootstrap-harness/claude-codex-harness
 nimoi/bootstrap-harness/claude-anthropic-harness
 
 The first element in your swimlane name must be your model lineage.
-The second element in your swimlane indicates the primary harness architecture:
+The second element in your swimlane indicates the initial harness architecture. For "hybrid" tasks they will be combined.
 - anthropic: Claude Agent SDK (claude-agent-sdk python library), Claude models only.
 - codex: Codex App Server called from python script
 
@@ -77,9 +77,22 @@ Inside your swimlane folder, use or create the following:
   f. System prompt should instruct the agent that it is a NIMOI agent and to read the latest version of NIMOI onboarding.
 
 5. task-5-subagent:
-  a. Maintain all functions expected in tasks 2 and 3, though implementation may be changed and permissions expanded per task 5.
+  a. Maintain all functions expected in tasks 2, 3, and 4, though implementation may be changed and permissions expanded per task 5.
   b. Take care with simplicity, clarity, and intuitiveness on concise general bound specification for filesystem and ledger bound specification.
   c. The agent should now have a filesystem write tool that allows writing the body of a ledger entry to file, bounded to some workspace directory.
   d. The agent should now have a python execute tool that allows execution of python scripts in a harness scripts directory. Write a safe test script. The tool should capture the script output in the body of a ledger entry. Core safety mechanism: Agents cannot write and execute from the same directory - they can draft scripts, but cannot promote them to the scripts directory.
   e. Create a custom subagent tool, where the parent can specify model, and bounds for filesystem read, write and execute, and restrictions on ledger reads and writes. Permissions must be a subset of the parent's. Tool bounds should be injected with the same notation for parent and child. Subagents should be required to read onboarding, and their instructions should be a ledger entry specified by the parent (the parent writes instructions to the ledger then passes a pointer to the tool). 
-  f. The sdks' native subagent tools should not be used, this should be a new parallel agent owned by the harness. 
+  f. The sdks' native subagent tools should not be used, this should be a new parallel agent owned by the harness.
+  g. (new) exec restriction is a known limitation for codex agents. The exec tool is allowed. Restrict it where possible, document where not. 
+
+
+
+6. task-6-hybrid: Continue your swimlane, whichever your initial model focus. This task will use both.
+   a. Create a harness derived from your architecture for task 5, implementing the same requirements.
+   b. Draw from other swimlanes for implementation of the model lineage you have not yet used.
+   c. Implement a 3-layer multi-model architecture:
+        b1. Governance layer - claude opus only. Responsible for human communication and dispatch of task owner agents. Should NOT attempt to do task owners' jobs for them or grade the quality of their work beyond assessments needed for safety/governance.
+        b2. Task owner layer - claude opus/fable or gpt astra/sol. Persues an assigned task, often written (ticket system to be developed later). Responsible for the quality of the completed task, compliance with letter and intent of human and governance agent restrictions and instructions, and for maintaining standards and faithfulness of the NIMOI institution as appropriate to assigned task.
+        b3. Subagent layer - claude sonnet or higher, gpt terra or higher. Strictly subordinate to task owners, assisting as a usual subagent.
+    d. The UI should be structured around direct chat with the governance agent but visibility into other agent activities.
+    f. Task owners should be able to send a self-blocking request to the governor, for example to request (with justification) a governor action (perhaps with human approval) beyond system permissions or authorized actions of the task owner.

@@ -208,6 +208,19 @@ DISCREPANCY: task-4-ledger/ledgers/claude-codex-pilot | expected: every chat ses
 closed with a trailer (End) | found: 20260925T132745Z unclosed, lease left, process
 killed from the task list (scribe check) | 2026-09-25
 
+**Lease cleared at the founder's direction** (chat, 2026-09-25, verbatim: "clear the
+lease at my direction but do not re-launch"), following interfaces.md's procedure:
+1. The holder's host `paul25` is this machine; pid 30160 is not running, and no task-4
+   process is running [checked: `Get-Process`, `Win32_Process`].
+2. `scribe.py check`: the single finding `unclosed 20260925T132745Z.ledger`, which is
+   not structural.
+3. Deleted `lease.json` (token `e378ddf7…`, acquired 2026-09-25T13:27:45.549Z).
+
+Afterwards [checked: `scribe.load`]: `is_leased` false, `well_formed` true, sessions
+`20260924T203001Z` and `20260925T132745Z`. The `unclosed` finding stays: findings are
+never withdrawn, and the session file is not repaired. The next session will name the
+unclosed file's last readable line as its prior. Not relaunched, per the direction.
+
 ## Open questions for the founder
 1. Deltas in the ledger: keep them as they are; coalesce the deltas of each message
    into one entry, which is lossless but loses the per-delta time; or leave them out,

@@ -1,0 +1,8 @@
+# The top-level agent's permissions (task 5). The notation is described in bounds.py.
+# A human edits this file. A launch is refused if fs.write and fs.exec overlap.
+# Subagents get a subset of these, passed by the parent in the same notation.
+fs.read       /  !/candidate_repos/
+fs.write      /bootstrap-harness/claude-anthropic-harness/task-5-subagent/workspace/
+fs.exec       /bootstrap-harness/claude-anthropic-harness/task-5-subagent/scripts/
+ledger.read   *
+ledger.write  pilot/

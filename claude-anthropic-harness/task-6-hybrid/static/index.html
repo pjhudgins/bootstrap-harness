@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NIMOI governor</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>NIMOI harness <span class="sub">claude-anthropic · task 6 · <span id="mode">connecting</span></span></h1>
+    <div class="meta">
+      <span id="model">model …</span>
+      <span id="ledger"></span>
+      <span id="account"></span>
+      <span id="ratelimit"></span>
+      <span id="cost">$0.0000 / $…</span>
+      <span id="state" class="badge">connecting</span>
+      <button type="button" id="end" class="small" disabled>End session</button>
+    </div>
+  </header>
+  <main>
+    <aside class="agents">
+      <div class="panel-head">
+        <h2>Agents</h2>
+        <button type="button" id="show-all" class="small" title="Show every agent's activity">All activity</button>
+      </div>
+      <ul id="agent-tree" class="tree"></ul>
+      <div class="panel-head">
+        <h2>Waiting for you</h2>
+        <span id="approval-count" class="count"></span>
+      </div>
+      <div id="approvals"><p class="empty">Nothing needs your approval.</p></div>
+    </aside>
+    <section class="chat">
+      <div id="chat-log" aria-live="polite"></div>
+      <form id="composer">
+        <textarea id="input" rows="3" placeholder="Message the governor. Enter sends, Shift+Enter adds a new line." disabled></textarea>
+        <div class="buttons">
+          <button type="submit" id="send" disabled>Send</button>
+          <button type="button" id="stop" disabled>Stop</button>
+        </div>
+      </form>
+    </section>
+    <aside class="events">
+      <div class="events-head">
+        <h2 id="activity-title">Activity · all agents</h2>
+        <label><input type="checkbox" id="show-raw"> protocol records</label>
+      </div>
+      <div id="event-log"></div>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

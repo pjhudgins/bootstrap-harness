@@ -1,6 +1,64 @@
 # GPT / Codex harness
 
-## Current: task-4-ledger completed at the prototype bar
+## Current: task-6 hybrid parked for founder guidance
+
+Bar: useful three-layer behavior, informative failures and surviving records.
+2026-09-28: read latest onboarding and rules; built task-6-hybrid separately.
+Both runtime adapters, role/model policy, subset delegation, blocking owner
+requests, governor decisions, human approval UI and agent visibility are present.
+
+[checked: receipts in mem/task-6-record.md] 16 offline tests passed; four focused
+SDK checks passed after a streaming identity fix. Real App Server tool capture
+passed on Codex 0.158.0-alpha.2. Live Opus governor -> Astra owner -> Sonnet child
+completed onboarding, add, approved Python, a blocking governor request, and
+ledger-to-file materialization. Human approvals are tested offline only.
+
+DISCREPANCY: live governor exceeded the intended task-6 role by inspecting the
+owner's artifact and critiquing report wording beyond safety/governance. Stopped
+under rules.md Authority and escalated. No role fix attempted after discovery.
+
+Status: parked pending founder guidance about this prototype role-enforcement
+defect and the boundary between governance checks and quality review. Driver
+stopped normally; live ledger hybrid-20260928t184543z-230a8f03 is closed/unleased
+with no structural inspector findings. There is no fresh running task-6 session.
+The streaming fixes have fake-SDK coverage but await a final-code live run.
+
+Entry: task-6-hybrid/README.md. Full record, receipts, limitations, proposed next
+step and remaining work: mem/task-6-record.md. No git commands used.
+
+## Task-5 peer-review improvements completed
+
+Bar: informative prototype failures, clear ownership and surviving records; no
+production isolation claim. 2026-09-25: founder authorized improvements and rules
+5g permits Codex exec with restrictions and documented limits.
+
+Fixed exact-directory listing visibility. Added immutable bounds.json configuration,
+bounds-selected tools, a full-read onboarding gate, shared AgentRuntime/AgentRecord,
+semantic events/result indexing, compact checkpoints (--stream-log detailed for
+full fragments), raw-call monitoring and a read-only ledger inspector.
+
+[checked: test receipts in mem/task-5-improvements.md] 45 offline checks passed.
+Actual local-provider captures: gpt-6-astra needs exec; gpt-5.5 works with exec host
+confirmed off. Neither current capture offered native collaboration, shell/patch,
+browser or external MCP tools. Earlier peer captures differed. The live mixed-model
+parent/child run passed; both processes exited normally, ledger closed without
+findings/lease. Two pilot receipt-parsing errors were refused and recovered; kept
+as evidence. Restriction flags, offered tools and observed calls are separate facts.
+
+Entry: task-5-subagent/README.md. Editable parent bounds: task-5-subagent/bounds.json.
+Run capture: audit_surface.py --model <model> [--real-config]. Inspect a saved launch:
+inspect_ledger.py <launch-name> --closed. Run tests from the task directory with
+python -B -X utf8 -m unittest discover -v.
+
+Fresh driver Ready at http://127.0.0.1:57406/; ledger
+chat-20260925t212502z-3785c800. [checked: launcher and browser AX; no prompt sent]
+Next: founder review. Status: completed at the stated bar. No git commands used.
+
+Original task-5 delivery and 35-test/live receipts: mem/task-5-record.md.
+Review decisions, discrepancies, captures and final live receipts:
+mem/task-5-improvements.md. Prior task directories and ledgers remain records.
+
+## Task 4: completed at the prototype bar
 
 2026-09-25 back-specification completed: `mem/task-4-spec.md` describes current
 task-4 requirements and design decisions in a three-level hierarchy, including

@@ -1,0 +1,2 @@
+Subagent pilot.1 ran hello_safe.py with arguments 4 and 5; it exited 0 with empty stderr.
+Stdout reported numeric sum 9.0 and squares 1..5 as [1, 4, 9, 16, 25].

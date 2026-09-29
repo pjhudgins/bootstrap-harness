@@ -1,0 +1,3 @@
+Bar: Good enough means this note records direct harness observations briefly, without smoothing over refusals or inferred behavior.
+
+Observed so far: onboarding had to be read to the end before other work; subagent delegation required a ledger instruction entry with a Bar line. A first instruction draft was refused as key-like, while a narrower draft was accepted and the bounded subagent reported a successful script run.

@@ -1,0 +1,6 @@
+# The governor's permissions (task 6). The notation is described in bounds.py. A human edits this file.
+# Founder decision, 2026-09-28: "Read + ledger + dispatch". The governor reads nimoi and writes only its
+# own ledger area; no fs.write and no fs.exec (so it has no tools for them), and it cannot spawn subagents.
+fs.read       /  !/candidate_repos/
+ledger.read   *
+ledger.write  gov/

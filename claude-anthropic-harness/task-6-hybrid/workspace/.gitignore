@@ -1,0 +1,4 @@
+# Agent-written files. Every one is recorded in the ledger (a file_write entry citing
+# the entry id the bytes came from), so the ledger is the record, not git.
+*
+!.gitignore

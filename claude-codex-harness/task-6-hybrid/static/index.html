@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="nimoi-token" content="__NIMOI_TOKEN__">
+  <title>NIMOI governor</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="title">
+      <strong>NIMOI</strong> <span class="muted">governor · task owners · subagents</span>
+    </div>
+    <div class="badges">
+      <span id="model-badge" class="badge">governor …</span>
+      <span id="approvals-badge" class="badge" hidden>0 awaiting you</span>
+      <span id="status" class="badge status">starting</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="chat" aria-label="Chat with the governor">
+      <h2 class="column-title">Governor</h2>
+      <div id="chat" class="log" aria-live="polite"></div>
+      <form id="composer" class="composer">
+        <textarea id="input" rows="2" placeholder="Message the governor. Enter sends, Shift+Enter adds a line."
+                  aria-label="Message" disabled></textarea>
+        <div class="actions">
+          <button id="send" type="submit" disabled>Send</button>
+          <button id="stop" type="button" class="secondary" title="Stop every running turn" disabled>Stop</button>
+          <button id="end" type="button" class="danger">End conversation</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="chat activity" aria-label="Other agents' activity">
+      <h2 class="column-title">Task owners and subagents</h2>
+      <div id="activity" class="log"></div>
+    </section>
+
+    <aside class="side" aria-label="Session details">
+      <section class="panel">
+        <h2>Agents</h2>
+        <ul id="agents" class="small tools"></ul>
+      </section>
+      <section class="panel">
+        <h2>Session</h2>
+        <dl>
+          <dt>Governor</dt><dd id="s-model">…</dd>
+          <dt>Engine</dt><dd id="s-engine">…</dd>
+          <dt>Stripped</dt><dd id="s-stripped" class="small">…</dd>
+        </dl>
+      </section>
+      <section class="panel">
+        <h2>Ledger</h2>
+        <dl>
+          <dt>Ledger</dt><dd id="l-name">…</dd>
+          <dt>Session</dt><dd id="l-session" class="mono small">…</dd>
+          <dt>Harness</dt><dd id="l-harness" class="mono small">…</dd>
+          <dt>Governor</dt><dd id="l-agent" class="mono small">…</dd>
+          <dt>File</dt><dd id="l-file" class="mono small">…</dd>
+        </dl>
+      </section>
+      <section class="panel">
+        <h2>Governor's bounds</h2>
+        <pre id="b-bounds" class="mono small bounds">…</pre>
+        <p id="b-models" class="small muted">…</p>
+      </section>
+      <section class="panel">
+        <h2>Restrictions</h2>
+        <ul id="restrictions" class="checks"></ul>
+        <p class="small muted">Tools: <span id="t-ours">…</span></p>
+      </section>
+      <section class="panel">
+        <h2>Usage</h2>
+        <dl>
+          <dt>Governor</dt><dd id="u-total">–</dd>
+        </dl>
+        <div id="limits" class="small muted">–</div>
+      </section>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
