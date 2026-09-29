@@ -96,3 +96,13 @@ Inside your swimlane folder, use or create the following:
         b3. Subagent layer - claude sonnet or higher, gpt terra or higher. Strictly subordinate to task owners, assisting as a usual subagent.
     d. The UI should be structured around direct chat with the governance agent but visibility into other agent activities.
     f. Task owners should be able to send a self-blocking request to the governor, for example to request (with justification) a governor action (perhaps with human approval) beyond system permissions or authorized actions of the task owner.
+
+Task 7: Project folder
+    a. Update your task 6 solution to launch one or more servers on different ports based on a config file.
+    b. Each server operates like an independent task 6 solution
+    c. The config file specifies one or more "projects" defined by a path to a project folder and a seperate path to an onboarding file.
+    d. The project folder should have an existing ledger directory. If it doesn't, prompt user before creation.
+    e. Agents can only interact with the ledger directory through ledger tools, it is forbidden from read and write.
+    f. The remainder of the project directory has write permissions and the direction of the governor. Writes outside of the project directory are forbidden.
+    g. A project should also have a read root, generally higher than the project directory.
+    h. After testing, set up the app to run with a default single project in your swimlane, normal nimoi onboarding, and the nimoi directory as the read root.

@@ -1,0 +1,29 @@
+# task-7-project: one server per project (rules.md task 7). A human edits this file.
+#
+# Each [[project]] runs as its own server (launch.py starts them all), with its own port, ledger,
+# governor, task owners, launch budget and Codex state. Relative paths resolve from this file's folder.
+#
+#   name          lowercase letters, digits, hyphens; also the ledger's default name
+#   port          the server's port on 127.0.0.1
+#   project_dir   the project folder: agents write here, as the governor directs; nothing outside it
+#   onboarding    one fixed file every agent reads in full first (founder, 2026-09-29: a fixed file,
+#                 so a new NIMOI onboarding version means editing this line)
+#   read_root     "/" of the bounds notation: agents read under it; project_dir and onboarding must be inside
+#   read_exclude  optional: folders under read_root that no agent reads
+#   ledger        optional: the ledger's name inside <project_dir>/ledger/ (default: name)
+#   budget_usd    optional: this server's launch budget for Claude agents (default 5.00)
+#
+# Inside every project folder:
+#   ledger/   the project's ledger directory, reached only through the ledger tools; if it is missing,
+#             the launcher asks before creating it
+#   scripts/  what agents may run; no agent writes there, and scripts arrive only by a promotion the
+#             human approves
+
+# The default project (rules 7h): in this swimlane, with NIMOI onboarding and nimoi as the read root.
+[[project]]
+name = "default"
+port = 8769
+project_dir = "projects/default"
+onboarding = "../../../origins/onboarding_1.12.md"
+read_root = "../../.."
+read_exclude = ["candidate_repos"]   # untrusted, per NIMOI onboarding

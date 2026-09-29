@@ -1,0 +1,5 @@
+# Runtime state that must never be committed: the isolated CODEX_HOME used for offline tests
+# (Codex writes sessions, logs and a plugin cache there), per-agent Codex working folders, and
+# the fake model provider's captures. The ledger is the record; this folder is scratch.
+*
+!.gitignore

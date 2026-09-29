@@ -78,7 +78,28 @@ GPT agents run on the Codex App Server. Codex's own tools are switched off where
 - three discrepancies in `rules.md` recorded by a live owner;
 - phase 1's live-turn message misattributed to the human, recorded and not repaired.
 
+### task-7-project — completed 2026-09-29; packaged the same day into `nimoi/harness/prod`, with its projects `nimoi/harness` and `nimoi/doctrine`, and the notebook `nimoi/harness/dev/notebook.md` (details: `mem/task-7-record.md`)
+Bar: the task-6 harness, runnable against any configured project folder, one server per project, each with its own record. Not production.
+
+**Launch:** `python task-7-project/launch.py` starts one server per project in `task-7-project/projects.toml`. The default project is `default` on http://127.0.0.1:8769, with folder `task-7-project/projects/default/`, NIMOI onboarding 1.12 and nimoi as the read root. A single project can also run alone: `python app.py --project NAME`.
+
+**Each project has:**
+- a folder, which agents write in as the governor directs; nothing outside it can be written;
+- `ledger/`, reachable only through the ledger tools; the launcher asks before creating it;
+- `scripts/`, which only human-approved promotions fill;
+- a fixed onboarding file;
+- a read root, which is the notation's `/`.
+
+The governor also writes in the project folder (founder, 2026-09-29).
+
+**After a session:** `python audit.py --project NAME`.
+
+**Tests:** `python -m unittest discover -s tests -t .` from `task-7-project/`: 99, all offline.
+
+**Records:** plan and founder decisions in `mem/task-7-plan.md`; built items, live checks and findings in `mem/task-7-record.md`; back-spec in `mem/task-7-spec.md` (a delta on task 6's).
+
 ## Pointers
+- `mem/task-7-plan.md`, `mem/task-7-record.md`, `mem/task-7-spec.md` — task 7 (project servers): plan and founder decisions, record, back-spec (a delta on task 6's).
 - `mem/task-6-plan.md` — task 6 bar, reading of the rules, architecture, founder decisions (Codex auth, GPT exec, request kinds, governor powers), phases.
 - `mem/task-6-phase1.md` — phase 1 (Codex backend): what was built, Codex 0.158 tool-surface findings, live runs, `.runtime` secrets check, decisions to confirm, open questions.
 - `mem/task-6-record.md` — phases 2–4: governance, UI, the live three-layer run and its findings, discrepancies.
